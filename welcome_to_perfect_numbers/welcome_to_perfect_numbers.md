@@ -31,9 +31,10 @@ I hope that who I am is not important for understanding my work, nor for making 
 - My (admittedly short) professional career has been in housing policy, specifically focused on the regularity barriers which stand in the way of abundance and affordability.
 - I love baseball - both because I grew up playing it and because it is by far the best sport for stats nerds. The fact that it can be broken down into a series of batter vs. pitcher matchups may be boring to some, but is essential for establishing the independence of events which I couldn’t be more thankful for.
 	- I am predictably a huge O’s fan.
+
 Other interests of mine which could influence future writing include:
 - Video games, board games, sports- really anything with a set of rules for creating competition.
-- Maps- you ever seen one of these things? They are so cool. Here’s a favorite of mine from the New York Times: A map of every building in the United States
+- Maps- you ever seen one of these things? They are so cool. Here’s a favorite of mine from the New York Times: [A Map of Every Building in the US](https://www.nytimes.com/interactive/2018/10/12/us/map-of-every-building-in-the-united-states.html)
 - Anything else I think about! It’s my gosh darn blog!
 
 Please feel free to let me know of any topics you’d like me to look into. I always love breaking out of my normal bubble of topics and researching something new.
