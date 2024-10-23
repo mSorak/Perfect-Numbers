@@ -2,10 +2,6 @@
 
 ## Telling simple stories with data
 
-**Date not found**
-
-**Likes:** 0
-
 Hello, and welcome to Perfect Numbers! I’m glad you’re here. This blog will be compromised of (mostly) short articles with data visualization and mediocre prose. If you don’t care about any of the pretense that’s all you need to know. If you want to know more about me and what I hope to do with this blog then keep reading.
 
 Subscribe
