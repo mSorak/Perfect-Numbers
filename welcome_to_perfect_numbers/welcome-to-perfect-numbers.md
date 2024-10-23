@@ -10,13 +10,11 @@ Subscribe
 
 Originally defined by Euclid in _[Elements](http://aleph0.clarku.edu/~djoyce/elements/bookVII/defVII22.html)_[ (VII.22)](http://aleph0.clarku.edu/~djoyce/elements/bookVII/defVII22.html), _“A perfect number is that which is equal to the sum of its own parts._
 
-That is, perfect numbers are numbers whose proper divisors (divisors not including the number itself) sum to the number itself _._ The smallest such number is 6:
-
-\\(6 = 3+2+1\\)
+That is, perfect numbers are numbers whose proper divisors (divisors not including the number itself) sum to the number itself _._ The smallest such number is 6: 
+$$6 = 3+2+1$$
 
 The next is a little less trivial, 28:
-
-\\(28 = 14+7+4+2+1\\)
+$$28 = 14+7+4+2+1$$
 
 I love perfect numbers. They were one of [the first concepts I was introduced to](https://www.youtube.com/watch?v=ZfKTD5lvToE) as I began falling in love with math- not as a school subject, but as the beautiful and complex set of rules (probably) inherent to our universe. Perfect numbers are not particularly important to the study of mathematics but have been around for at least 2300 years and are still a bit of a mystery. It is unknown if there are infinitely many of them and while none have yet been found, it is an open question if there are any odd perfect numbers. And despite their simplicity, they are exceedingly rare- [the 10th perfect number is 54 digits long](https://oeis.org/A000396). 
 
