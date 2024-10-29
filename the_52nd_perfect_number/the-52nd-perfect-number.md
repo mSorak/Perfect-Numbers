@@ -10,11 +10,11 @@ Subscribe
 
 Okay, I really hope everyone reading this knows this, but just in case here's the definition of a prime number from [Wikipedia](https://en.wikipedia.org/wiki/Prime_number): A prime number is a natural number (positive integer) greater than 1 that is not a product of two smaller natural numbers. A _Mersenne_ prime is a special kind of prime which takes the form: 
 
-\\(2^p-1\\)
+$2^p-1$
 
 or- in English- is one less than a power of 2. For example, 7 is a Mersenne prime because 
 
-\\(2^3-1=7\\)
+$2^3-1=7$
 
 and 7 has no combination of natural numbers other than 7 times 1 for which it is the product. In the age of computers being way better at math than us monkeys, most of the largest primes found have been Mersenne because their primality is easy to check with computers.
 
@@ -26,7 +26,7 @@ Now why we're really talking about Mersenne Primes is because they share a close
 
 All known perfect numbers are related to a corresponding Mersenne prime by the [Euclid-Euler theorem](https://en.wikipedia.org/wiki/Euclid%E2%80%93Euler_theorem#:~:text=The%20Euclid%E2%80%93Euler%20theorem%20is,1%20is%20a%20prime%20number.) which states that an _even_ number is perfect if and only if it has the form 
 
-\\(\text{Perfect Number}=2^{p-1}(2^{p}-1)\\)
+$\text{Perfect Number}=2^{p-1}(2^{p}-1)$
 
 where _2 p-1_ is a prime number- a Mersenne Prime! As of today, all known perfect numbers are even and thus have a Mersenne Prime friend, but it remains unproven whether or not there are any odd perfects. Now most mathematicians believe that no odd perfects exist but I personally am hanging on to hope due to the _Sorak Wouldn't it be so damn fun Conjecture_.
 
@@ -36,11 +36,11 @@ Okay, now lets talk a little bit about the new prime that was discovered. Just a
 
 So here's the prime, written using its Mersenne Prime form:
 
-\\(2^{136,279,841}-1\\)
+$2^{136,279,841}-1$
 
 I will not be inserting the actual number as it is _41,024,320 digits_ long, which Substack informs me is to long to put on their servers (a compressed text file of the full number is 22 Megabytes).[1](https://perfectnumbers.substack.com/p/the-52nd-perfect-number#footnote-1-150858800) To throw out the classic comparison for large numbers, the number of atoms in the observable universe is roughly 1080, which is... 80 digits long. This number is **stupid** big. It is just not possible to express the size of this numbers in real-world terms in any meaningful way. The previous record holder for the largest known prime is similarly huge. Though relatively it’s tiny, only having _24,862,048_ digits- amateur stuff really. Oh and the new perfect number is 
 
-\\(2^{136,279,840}(2^{136,279,841}-1)\\)
+$2^{136,279,840}(2^{136,279,841}-1)$
 
 which has exactly double the number of digits as its Mersenne Prime friend: _82,048,640_. Again, that's digits!
 
@@ -54,11 +54,11 @@ Growth was very slow for a long time. In 1588, the largest known prime was _524,
 
 The growth in recent history is due to the increasing capability of computers. The last time a new biggest prime was found which wasn’t discovered by a computer was in 1951. Aimé Ferrier used [Proth’s theorem](https://en.wikipedia.org/wiki/Proth%27s_theorem) to discover that the following number is prime:
 
-\\((2^{148}+1)/17 = 20,988,936,657,440,586,486,151,264,256,610,222,593,863,921\\)
+$(2^{148}+1)/17 = 20,988,936,657,440,586,486,151,264,256,610,222,593,863,921$
 
 Less than a year later, Mathematician Raphael Robinson was the first to create a computer usable primality test for Mersenne Primes. Throughout 1952, using a _[Standards Western Automatic Computer](https://en.wikipedia.org/wiki/SWAC_\(computer\)) _he checked the primality of all Mersenne numbers;
 
-\\(2^p-1,p<2304\\)
+$2^p-1,p<2304$
 
 finding a total of 17 primes- confirming the primality of the first 12 and discovering 5 new Mersenne Primes which each successively became the new largest known prime.
 
