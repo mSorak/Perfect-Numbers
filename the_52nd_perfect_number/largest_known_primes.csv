@@ -1,0 +1,45 @@
+Number,Digits,Year,Prover,Method,computer,method_or_machine,Machine,log_digits,Mersenne
+M17,6,1588,Cataldi,trial division,Not Computer,trial division,,0.7781512503836436,Mersenne
+M19,6,1588,Cataldi,trial division,Not Computer,trial division,,0.7781512503836436,Mersenne
+M31,10,1772,Euler,trial division++,Not Computer,trial division++,,1.0,Mersenne
+(2^59-1)/179951,13,1867,Landry,trial division++,Not Computer,trial division++,,1.1139433523068367,Not Mersenne
+M127,39,1876,Lucas,Lucas sequences,Not Computer,Lucas sequences,,1.591064607026499,Mersenne
+(2^148+1)/17,44,1951,Ferrier,Proth's theorem,Not Computer,Proth's theorem,,1.6434526764861874,Not Mersenne
+180(M127)2+1,79,1951,Miller & Wheeler,,Computer,EDSAC1,EDSAC1,1.8976270912904414,Not Mersenne
+M521,157,1952,Robinson (Jan 30),,Computer,SWAC,SWAC,2.1958996524092336,Mersenne
+M607,183,1952,Robinson (Jan 30),,Computer,SWAC,SWAC,2.2624510897304293,Mersenne
+M1279,386,1952,Robinson (June 25),,Computer,SWAC,SWAC,2.586587304671755,Mersenne
+M2203,664,1952,Robinson (Oct 7),,Computer,SWAC,SWAC,2.8221680793680175,Mersenne
+M2281,687,1952,Robinson (Oct 9),,Computer,SWAC,SWAC,2.8369567370595505,Mersenne
+M3217,969,1957,Riesel,,Computer,BESK,BESK,2.986323777050765,Mersenne
+M4423,1332,1961,Hurwitz,,Computer,IBM7090,IBM7090,3.1245042248342823,Mersenne
+M9689,2917,1963,Gillies,,Computer,ILLIAC 2,ILLIAC 2,3.4649364291217326,Mersenne
+M9941,2993,1963,Gillies,,Computer,ILLIAC 2,ILLIAC 2,3.4761067168401913,Mersenne
+M11213,3376,1963,Gillies,,Computer,ILLIAC 2,ILLIAC 2,3.5284024379536176,Mersenne
+M19937,6002,1971,Tuckerman,,Computer,IBM360/91,IBM360/91,3.7782959910888336,Mersenne
+M21701,6533,1978,Noll & Nickel,,Computer,CDC Cyber 174,CDC Cyber 174,3.8151126581898125,Mersenne
+M23209,6987,1979,Noll,,Computer,CDC Cyber 174,CDC Cyber 174,3.844290743254343,Mersenne
+M44497,13395,1979,Nelson & Slowinski,,Computer,Cray 1,Cray 1,4.126942717944227,Mersenne
+M86243,25962,1982,Slowinski,,Computer,Cray 1,Cray 1,4.414338145582368,Mersenne
+M132049,39751,1983,Slowinski,,Computer,Cray X-MP,Cray X-MP,4.599348058502406,Mersenne
+M216091,65050,1985,Slowinski,,Computer,Cray X-MP/24,Cray X-MP/24,4.813247300897605,Mersenne
+391581 ·2216193-1,65087,1989,Amdahl Six,,Computer,Amdahl 1200,Amdahl 1200,4.813494254435237,Not Mersenne
+M756839,227832,1992,Slowinski & Gage et al. (notes),,Computer,Cray-2,Cray-2,5.357614722585041,Mersenne
+M859433,258716,1994,Slowinski & Gage,,Computer,Cray C90,Cray C90,5.412823288000805,Mersenne
+M1257787,378632,1996,Slowinski & Gage,,Computer,Cray T94,Cray T94,5.578217315481279,Mersenne
+M1398269,420921,1996,"Armengaud, Woltman, et al. [GIMPS]",,Computer,Pentium (90 Mhz),Pentium (90 Mhz),5.624200593499532,Mersenne
+M2976221,895932,1997,"Spence, Woltman, et al. [GIMPS]",,Computer,Pentium (100 Mhz),Pentium (100 Mhz),5.952275048562281,Mersenne
+M3021377,909526,1998,"Clarkson, Woltman, Kurowski, et al. [GIMPS, PrimeNet]",,Computer,Pentium (200 Mhz),Pentium (200 Mhz),5.958815118457374,Mersenne
+M6972593,2098960,1999,"Hajratwala, Woltman, Kurowski, et al. [GIMPS, PrimeNet]",,Computer,Pentium (350 Mhz),Pentium (350 Mhz),6.322004162286639,Mersenne
+M13466917,4053946,2001,"Cameron, Woltman, Kurowski, et al. [GIMPS, PrimeNet]",,Computer,AMD T-Bird (800 Mhz),AMD T-Bird (800 Mhz),6.607877959438831,Mersenne
+M20996011,6320430,2003,"Shafer, Woltman, Kurowski, et al. [GIMPS, PrimeNet]",,Computer,Pentium (2 GHz),Pentium (2 GHz),6.800746625794185,Mersenne
+M24036583,7235733,2004,"Findley, Woltman, Kurowski, et al. [GIMPS, PrimeNet]",,Computer,Pentium 4 (2.4GHz),Pentium 4 (2.4GHz),6.859482532929891,Mersenne
+M25964951,7816230,2005,"Nowak, Woltman, Kurowski, et al. [GIMPS, PrimeNet]",,Computer,Pentium 4 (2.4GHz),Pentium 4 (2.4GHz),6.892997330426835,Mersenne
+M30402457,9152052,2005,"Cooper, Boone, Woltman, Kurowski, et al. [GIMPS, PrimeNet]",,Computer,Pentium 4 (2GHz upgraded to 3GHz),Pentium 4 (2GHz upgraded to 3GHz),6.961518479024222,Mersenne
+M32582657,9808358,2006,"Cooper, Boone, Woltman, Kurowski, et al. [GIMPS, PrimeNet]",,Computer,Pentium 4 (3 GHz),Pentium 4 (3 GHz),6.991596308987866,Mersenne
+M43112609,12978189,2008,"E_Smith, Woltman, Kurowski, et al. [GIMPS, PrimeNet]",,Computer,Intel Core 2 Duo E6600 CPU (2.4 GHz),Intel Core 2 Duo E6600 CPU (2.4 GHz),7.113214094453603,Mersenne
+M57885161,17425170,2013,"Cooper, Woltman, Kurowski, et al. [GIMPS, PrimeNet]",,Computer,Intel Core2 Duo E8400 (3 GHz),Intel Core2 Duo E8400 (3 GHz),7.2411770237687145,Mersenne
+M74207281,22338618,2016,"Cooper, Woltman, Kurowski, Blosser, et al. [GIMPS, PrimeNet]",,Computer,Intel I7-4790 CPU,Intel I7-4790 CPU,7.349056301566545,Mersenne
+M77232917,23249425,2018,"Pace, Woltman, Kurowski, Blosser, et al. [GIMPS, PrimeNet]",,Computer,Intel i5-6600 CPU,Intel i5-6600 CPU,7.366412216476937,Mersenne
+M82589933,24862048,2018,"Laroche, Woltman, Blosser, et al. [GIMPS, PrimeNet]",,Computer,Intel i5-4590T CPU,Intel i5-4590T CPU,7.395536900591408,Mersenne
+M136279841,41024320,2024,"Durant, Preda, Woltman, Blosser, et al. [GIMPS, PrimeNet]",,Computer,NVIDIA A100 GPU,NVIDIA A100 GPU,7.613041391121956,Mersenne
