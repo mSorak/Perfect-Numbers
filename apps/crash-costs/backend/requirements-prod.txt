@@ -1,0 +1,8 @@
+# Runtime dependencies only (no geopandas — used by prepare_data.py locally).
+fastapi>=0.115
+uvicorn[standard]>=0.30
+duckdb>=1.1
+pandas>=2.0
+pyarrow>=17.0
+pydantic>=2.8
+orjson>=3.10

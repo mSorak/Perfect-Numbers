@@ -1,0 +1,22 @@
+# Generated artifacts from prepare_data.py (README is committed)
+data_cache/*
+!data_cache/README.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+.env.*
+
+# Node
+node_modules/
+dist/
+.vite/
+*.log
+
+# IDE
+.vscode/
+.idea/
