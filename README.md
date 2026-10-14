@@ -20,6 +20,7 @@ This repo holds the **code, dataset catalog and documentation** for a local-firs
 | `queries/examples/` | Question-first example queries |
 | `projects/<slug>/` | Piece-specific analysis, only when it's worth keeping |
 | `docs/` | Design documents and decision records |
+| `ops/` | Operational scripts (nightly backup of the data root) |
 
 ## Data root
 
