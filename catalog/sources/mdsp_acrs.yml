@@ -1,0 +1,77 @@
+source_id: mdsp_acrs
+publisher: Maryland Department of State Police (ACRS crash reports, via the MDSP public Tableau dashboard)
+landing_page: https://mdsp.maryland.gov/safety-prevention/interactive-data-dashboards
+platform: Tableau Server (analytics.mdsp.org, site "Public", guest access, export enabled)
+terms: "Provided as-is; MDSP makes no warranties. No explicit license; cite MDSP and the retrieval date."
+cadence:
+  upstream: daily
+  ours: semiannual (manual) → monthly once the API-route spike or Playwright automation lands
+  repull: "manual: new + previous half-year each batch; automated: trailing 9 months each refresh; a month freezes at 12 months old"
+retention: keep all snapshots (small; needed for tracking revisions and withdrawn reports)
+recipe: |
+  Manual export until automation exists (Phase 2 item 3: API route first, Playwright fallback).
+  1. Open https://analytics.mdsp.org/t/Public/views/PublicCrash2/PublicCrash
+     ?Crash%20Date%20Begin=YYYY-MM-DD&Crash%20Date%20End=YYYY-MM-DD
+     Use MONTHLY windows. If "Data" stays greyed out under Download, shrink to weekly (suspected
+     record-count limit, unconfirmed).
+  2. Click the Crash Map sheet → toolbar "…" → Download → Data.
+  3. For EVERY tab (Reports, Vehicles, Occupants, NonMotorists, Contribs, Damage, Sequence,
+     NMSafetyEquip, and any others present) choose "Show all fields" → Download.
+     All tables and all variables (Matt, 2026-10-13). Do all tabs in ONE sitting: mixing sessions
+     leaves orphan vehicle rows (issue #9, 2025H2).
+  4. Save into $PN_DATA_ROOT\inbox\mdsp_acrs\ and run: pn intake mdsp_acrs --period 2026H1
+hazards:
+  - Workbook has been renamed before (PublicCrash → PublicCrash2); the recipe breaks if the view changes.
+  - Download → Data is sometimes greyed out, possibly when a window has too many records. Use smaller windows.
+  - Data are revised and occasionally withdrawn after approval; every pull needs retrieved_at, and staging picks snapshots explicitly.
+  - 2019–2023 data live in a different workbook (PublicCrashData) with a different layout.
+  - Columns drift between exports (Vehicles 2025H2 has 69 columns, earlier halves 67). Staging selects by name.
+  - Exports are UTF-8 with a byte-order mark; dates are M/D/YYYY.
+cross_checks: [moco_crash_socrata, baco_crashdata_arcgis, nhtsa_fars]
+bulk_access_options: "MSP / MDOT Highway Safety Office or a Maryland Public Information Act request exist; not being pursued for now (Matt, 2026-10-13)."
+
+entities:
+  reports:
+    connector: manual
+    header_signature: [Reportnumber, Crash Severity, Crashdate, LOD Crash Date, Latitude, Longitude]
+    key: [Reportnumber]
+    date_column: Crashdate
+    date_format: "%m/%d/%Y"
+  vehicles:
+    connector: manual
+    header_signature: [ReportNumber Veh, VehicleID]
+    key: [ReportNumber Veh, VehicleID]
+    parent: {entity: reports, key: ReportNumber Veh, parent_key: Reportnumber, max_orphan_pct: 0.05}
+  occupants:
+    connector: manual
+    header_signature: [ReportNumber Occ, PersonID Occ]
+    key: [ReportNumber Occ, PersonID Occ]
+    parent: {entity: reports, key: ReportNumber Occ, parent_key: Reportnumber, max_orphan_pct: 0.05}
+    pii: true   # demographics, names of towns/zips; columns are tagged pii in the staging card
+  nonmotorists:
+    connector: manual
+    header_signature: [ReportNumber NM, PersonID NM]
+    key: [ReportNumber NM, PersonID NM]
+    parent: {entity: reports, key: ReportNumber NM, parent_key: Reportnumber, max_orphan_pct: 0.05}
+    pii: true
+  # Tabs not in the legacy 2024–2025 files; required: false until the first all-tabs export
+  # confirms their headers (then add header_signature/key and drop `required: false`).
+  contribs:      {connector: manual, required: false}
+  damage:        {connector: manual, required: false}
+  sequence:      {connector: manual, required: false}
+  nmsafetyequip: {connector: manual, required: false}
+
+intake:
+  same_session_hours: 12        # all tabs of one batch must come from one export sitting
+  request: {view: PublicCrash2/PublicCrash, ui_default: "Crash Map sheet > Download > Data > <tab>, show all fields"}
+  reconcile:
+    entity: reports
+    url: "https://analytics.mdsp.org/t/Public/views/PublicCrash2/PublicCrash.csv?Crash%20Date%20Begin={start}&Crash%20Date%20End={end}"
+    key: Reportnumber
+    group_by: [Crash County Description, Crash Severity Description]
+    count_column: Distinct count of Reportnumber
+    tolerance_pct: 0.5          # warn only: the endpoint shows today's data, the file shows export-day data
+  waivers:
+    legacy_mixed_session:
+      description: "Legacy batch whose tabs were exported in different sessions; orphans expected."
+      waives: [same_session, orphans]

@@ -83,6 +83,41 @@ def fetch(source_id: str, entity: list[str] = typer.Option(None, "--entity", "-e
 
 
 @app.command()
+def intake(source_id: str,
+           period: str = typer.Option(..., "--period", "-p", help="Batch period: 2025H2, 2025Q3, 2025-07 or 2025"),
+           files: list[str] = typer.Argument(None, help="Files to intake; default: everything in inbox/<source>/"),
+           copy: bool = typer.Option(False, "--copy", help="Copy the files (legacy/archive); never move or delete them"),
+           retrieved_at: str = typer.Option(None, help="Export time (ISO, local if no offset); default: file mtime"),
+           ui: str = typer.Option(None, help="UI settings used for the export, recorded in the manifest"),
+           waive: list[str] = typer.Option(None, "--waive", help="Waiver code declared in the source card"),
+           note: str = typer.Option(None, "--note", help="Note recorded in the manifest (required with --waive: why it applies)"),
+           no_reconcile: bool = typer.Option(False, "--no-reconcile", help="Skip the publisher reconciliation"),
+           dry_run: bool = typer.Option(False, "--dry-run", help="Run checks only; commit nothing")) -> None:
+    """Check manually downloaded files and commit them as raw snapshots (one per entity)."""
+    from pathlib import Path
+
+    from pndata.cards import source_cards
+    from pndata.intake import IntakeError
+    from pndata.intake import intake as run_intake
+
+    src = source_cards().get(source_id)
+    if not src:
+        raise typer.BadParameter(f"no source card {source_id!r}")
+    if waive and not note:
+        raise typer.BadParameter("--waive needs --note explaining why")
+    when = None
+    if retrieved_at:
+        when = datetime.fromisoformat(retrieved_at)
+        when = when if when.tzinfo else when.astimezone()
+    try:
+        run_intake(src, period, [Path(f) for f in files or []], copy=copy, retrieved_at=when, ui=ui,
+                   waivers=waive, waiver_note=note, reconcile=not no_reconcile, dry_run=dry_run, log=typer.echo)
+    except IntakeError as e:
+        typer.echo(f"✗ {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def build(dataset_ids: list[str],
           upstream: bool = typer.Option(False, "--upstream", help="Also build dependencies first"),
           downstream: bool = typer.Option(False, "--downstream", help="Also rebuild dependents")) -> None:
@@ -148,12 +183,17 @@ def status() -> None:
     """Sources: last snapshot. Datasets: current build and whether inputs are newer."""
     from pndata.builds import current_build
     from pndata.cards import dataset_cards, source_cards
-    from pndata.manifest import latest_snapshot
+    from pndata.manifest import latest_snapshot, read_manifest
+    manifest = read_manifest()
     typer.echo("SOURCES")
     for sid, s in sorted(source_cards().items()):
         for ent in s["entities"]:
             rec = latest_snapshot(sid, ent)
-            typer.echo(f"  {sid}/{ent:<28} {rec['snapshot_id'] if rec else 'never fetched'}")
+            periods = sorted({r["period"] for r in manifest
+                              if r["source_id"] == sid and r["entity"] == ent and r.get("period")})
+            info = (f"{len(periods)} periods {periods[0]}..{periods[-1]}, last pull {rec['retrieved_at'][:10]}"
+                    if periods else rec["snapshot_id"] if rec else "never fetched")
+            typer.echo(f"  {sid}/{ent:<28} {info}")
     typer.echo("DATASETS")
     for cid, card in sorted(dataset_cards().items()):
         cur = current_build(card)

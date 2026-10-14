@@ -54,9 +54,10 @@ def read_manifest() -> list[dict]:
     return [json.loads(line) for line in MANIFEST_FILE.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def latest_snapshot(source_id: str, entity: str) -> dict | None:
-    """Latest snapshot recorded in the committed manifest (not by scanning folders)."""
-    rows = [r for r in read_manifest() if r["source_id"] == source_id and r["entity"] == entity]
+def latest_snapshot(source_id: str, entity: str, period: str | None = None) -> dict | None:
+    """Latest snapshot recorded in the committed manifest (not by scanning folders); optionally for one period."""
+    rows = [r for r in read_manifest() if r["source_id"] == source_id and r["entity"] == entity
+            and (period is None or r.get("period") == period)]
     return max(rows, key=lambda r: r["retrieved_at"]) if rows else None
 
 
@@ -65,8 +66,9 @@ def snapshot_dir(record: dict) -> Path:
 
 
 def commit_snapshot(workdir: Path, source_id: str, entity: str, meta: dict,
-                    period: str | None = None) -> dict | None:
-    """Hash files in workdir; skip if identical to the latest snapshot; else move into raw/ read-only."""
+                    period: str | None = None, retrieved_at: datetime | None = None) -> dict | None:
+    """Hash files in workdir; skip if identical to the latest snapshot (of the same period); else move into
+    raw/ read-only. `retrieved_at` overrides "now" for manual intake (e.g. the export file's mtime)."""
     files = sorted(p for p in workdir.rglob("*") if p.is_file())
     if not files:
         raise RuntimeError(f"{source_id}/{entity}: fetch produced no files")
@@ -76,14 +78,17 @@ def commit_snapshot(workdir: Path, source_id: str, entity: str, meta: dict,
     data_files = [f for f in file_info if not Path(f["name"]).name.startswith("_")] or file_info
     combined = hashlib.sha256("".join(f["name"] + f["sha256"] for f in data_files).encode()).hexdigest()
 
-    prev = latest_snapshot(source_id, entity)
-    if prev and prev.get("sha256") == combined and (period is None or prev.get("period") == period):
+    prev = latest_snapshot(source_id, entity, period)
+    if prev and prev.get("sha256") == combined:
         shutil.rmtree(workdir, ignore_errors=True)
         return None
 
-    sid = snapshot_id(period=period)
+    when = (retrieved_at or utc_now()).astimezone(timezone.utc)
+    sid = snapshot_id(when, period=period)
     rel = Path("raw") / source_id / entity / sid
     dest = data_root() / rel
+    if dest.exists():
+        raise RuntimeError(f"{rel} already exists; refusing to overwrite a raw snapshot")
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(workdir), str(dest))
     for p in dest.rglob("*"):
@@ -92,7 +97,7 @@ def commit_snapshot(workdir: Path, source_id: str, entity: str, meta: dict,
 
     record = {
         "snapshot_id": sid, "source_id": source_id, "entity": entity, "path": rel.as_posix(),
-        "retrieved_at": utc_now().isoformat(timespec="seconds"), "sha256": combined,
+        "retrieved_at": when.isoformat(timespec="seconds"), "sha256": combined,
         "files": file_info, "period": period, "pn_version": __version__, "fetch_code_sha": git_sha(),
         **meta,
     }

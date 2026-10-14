@@ -25,6 +25,18 @@ Last updated: 2026-10-14 (end of Phase 1). Read this after `AGENTS.md`. The full
 
 Plan: `03_proposal.md` §10, "Phase 2". The work items, in order:
 
+**Progress (2026-10-14):**
+- **Item 1 is done.** `pn intake` is in `src/pndata/intake.py`, with tests in `tests/` (`uv run pytest`).
+  - Checks: header signature, rows, key uniqueness, dates in period, orphan children, entities present, same session, and publisher reconciliation (warn-only).
+  - Waivers are declared in the source card and recorded in the manifest along with `--note`.
+- **Item 2: the card is written** (`catalog/sources/mdsp_acrs.yml`). The API-route spike is not started.
+  - The reconciliation CSV also names the hidden tabs Contribs, Damage, Sequence and NMSafetyEquip. They are in the card as `required: false` until the first all-tabs export.
+- **Item 3 is done.** 16 snapshots cover 2024H1–2025H2. All four reconciliations are within ±0.3%. 2025H2 carries the `legacy_mixed_session` waiver.
+  - **Finding:** three legacy Vehicles files are mislabeled by half-year. `Vehicles_010124_063124` holds 2024H2, `Vehicles_070124_123124` holds 2025H1 and `Vehicles_010125_063125` holds 2024H1.
+  - Each one matches 100% of one Reports file and 0% of the others. They were paired by content, and each manifest line has a `note` saying so.
+  - The concatenated `*_maryland_2024_2025.csv` files cover all of them, so the legacy cost analysis is unaffected.
+- **Next:** item 4 (staging cards). Read the half-years from the manifest by `period`, not by file name.
+
 **1. Build `pn intake`** (the `manual` connector). It isn't written yet. Requirements:
 - Move files from `$PN_DATA_ROOT/inbox/<source>/` into `raw/<source>/<entity>/<snapshot_id>__<period>/`, read-only.
 - Detect each file's entity by header signature.
