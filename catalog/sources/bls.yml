@@ -1,0 +1,17 @@
+source_id: bls
+publisher: U.S. Bureau of Labor Statistics (Public Data API v2)
+landing_page: https://www.bls.gov/developers/
+terms: "Public domain (US government). Cite BLS, series ID and retrieval date."
+cadence: {upstream: "monthly (CPI ~mid-month for the prior month)", ours: "monthly, or before any inflation-adjusted piece"}
+hazards:
+  - The last ~2 months can be revised (seasonally adjusted series are revised each February); NSA CPI-U is not revised after publication.
+  - Without a key the API caps requests at 10 years and 25/day; with BLS_API_KEY, 20 years and 500/day.
+  - October 2025 CPI was not collected (federal shutdown); BLS publishes no value for that month.
+entities:
+  cpi_u:
+    connector: bls_api
+    series:
+      - CUUR0000SA0    # CPI-U, U.S. city average, all items, not seasonally adjusted (1982-84=100)
+      - CUSR0000SA0    # same, seasonally adjusted
+      - CUURS35ESA0    # CPI-U, Baltimore-Columbia-Towson, all items, NSA (bimonthly from 2018)
+    start_year: 1975

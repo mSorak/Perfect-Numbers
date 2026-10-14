@@ -1,0 +1,42 @@
+id: traffic.aadt_segment_year
+title: MDOT SHA AADT by segment and year, with VMT
+description: >
+  Annual average daily traffic (AADT) and weekday traffic (AAWDT) per AADT segment and year, long format
+  with an explicit year, plus vehicle-miles travelled. VMT = AADT × segment length; annual VMT uses the
+  calendar year's days. Segment attributes and geometry: `traffic.aadt_segment`.
+grain: one row per segment × year with a published, non-zero AADT
+primary_key: [segment_id, year]
+layer: staging
+access_mode: mirror
+source: mdot_sha_aadt
+build: {python: "pipelines/traffic/aadt.py:aadt_segment_year"}
+depends_on: [raw:mdot_sha_aadt/aadt_segment]
+period: {field: year, grain: year}
+license: {terms: public, redistribution: attribution, citation: "MDOT SHA, Annual Average Daily Traffic (FeatureServer), retrieved {retrieved_at}"}
+caveats:
+  - date: "2026-10-14"
+    text: "History years use today's segment geometry and lengths. Where a road was re-segmented, older years are as MDOT re-published them, not as originally counted."
+  - date: "2026-10-14"
+    text: "In the 2026-10 snapshot the unsuffixed AADT column is 2025 (newest suffixed column is AADT_2024). Confirmed by Matt per HANDOFF; re-check the rule on every new release."
+  - date: "2026-10-14"
+    text: "Most years are factored estimates, not counts; only the latest year's counted/factored flag is published (traffic.aadt_segment.counted_factored_latest)."
+columns:
+  - {name: segment_id, type: varchar, description: "Joins traffic.aadt_segment.segment_id (same snapshot)."}
+  - {name: year, type: integer, description: "Calendar year the volume describes."}
+  - {name: aadt, type: bigint, description: "Annual average daily traffic, vehicles/day (both directions)."}
+  - {name: aawdt, type: bigint, description: "Annual average weekday traffic, vehicles/day."}
+  - {name: is_latest_column, type: boolean, description: "True if from the release's unsuffixed (newest) column."}
+  - {name: year_method, type: varchar, description: "How the year was assigned."}
+  - {name: length_m, type: double, description: "Segment length in metres (EPSG:26985)."}
+  - {name: daily_vmt, type: double, description: "AADT × length in miles: vehicle-miles per average day."}
+  - {name: annual_vmt, type: double, description: "daily_vmt × days in the year."}
+  - {name: source_snapshot_id, type: varchar, description: "Raw snapshot this row came from."}
+tests:
+  - {unique: [segment_id, year]}
+  - {not_null: [segment_id, year, aadt]}
+  - {relationships: {column: segment_id, to: traffic.aadt_segment}}
+  - name: statewide_vmt_band_2019
+    # FHWA HM-71 puts Maryland at ~60B VMT/yr; the SHA AADT network carries most but not all of it
+    sql: "SELECT sum(annual_vmt) / 1e9 AS bvmt FROM {this} WHERE year = 2019 HAVING bvmt NOT BETWEEN 30 AND 65"
+  - name: latest_year_close_to_previous
+    sql: "SELECT a.y, a.v / b.v AS ratio FROM (SELECT max(year) y, sum(daily_vmt) FILTER (WHERE is_latest_column) v FROM {this}) a, (SELECT sum(daily_vmt) v FROM {this} WHERE year = (SELECT max(year) - 1 FROM {this})) b WHERE a.v / b.v NOT BETWEEN 0.9 AND 1.1"

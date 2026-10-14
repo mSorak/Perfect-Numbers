@@ -1,0 +1,34 @@
+id: ref.nhtsa_unit_cost_2019
+title: NHTSA comprehensive unit costs of police-reported crashes, 2019 dollars (Table 1-10)
+description: >
+  Per-person unit costs by injury level (MAIS0–MAIS5, Fatal) and per-damaged-vehicle costs for
+  property-damage-only crashes (PDOVehicle), split into cost components, in 2019 dollars. From
+  Blincoe et al., "The Economic and Societal Impact of Motor Vehicle Crashes, 2019 (Revised)",
+  NHTSA DOT HS 813 403 (2023), Table 1-10. Long format; filter cost_component = 'total_comprehensive'
+  for the headline unit cost.
+grain: one row per injury level × cost component (including subtotal and total rows)
+primary_key: [injury_level, cost_component]
+layer: seed
+access_mode: derived
+build: {seed: ref_nhtsa_unit_cost_2019.csv}
+depends_on: ["seed:ref_nhtsa_unit_cost_2019.csv"]
+license: {terms: public domain (US government report), redistribution: allowed, citation: "Blincoe et al. (2023), NHTSA DOT HS 813 403, Table 1-10"}
+caveats:
+  - date: "2026-10-14"
+    text: "Transcribed from 2026\\crash_costs\\tables_from_report.xlsx, sheet police_unit_costs_comp (sha256 40b476a2…2d22), as used by the published crash-cost model. Not re-checked against the PDF."
+  - date: "2026-10-14"
+    text: "Subtotal and total rows are included (component_group 'subtotal' / 'total'); never sum across all rows of an injury level."
+columns:
+  - {name: injury_level, type: varchar, description: "PDOVehicle (per damaged vehicle), MAIS0–MAIS5 or Fatal (per person)."}
+  - {name: cost_component, type: varchar, description: "medical, ems, market_productivity, household_productivity, insurance_admin, workplace, legal, congestion, property_damage, quality_of_life, subtotals, total_economic, total_comprehensive."}
+  - {name: component_group, type: varchar, description: "economic_person, economic_other, quality_of_life, subtotal or total."}
+  - {name: unit_cost_usd2019, type: bigint, description: "Unit cost in 2019 dollars."}
+tests:
+  - {unique: [injury_level, cost_component]}
+  - {row_count: {min: 112, max: 112}}
+  - name: components_sum_to_total_economic
+    sql: "SELECT injury_level FROM {this} GROUP BY injury_level HAVING abs(sum(unit_cost_usd2019) FILTER (WHERE component_group IN ('economic_person', 'economic_other')) - max(unit_cost_usd2019) FILTER (WHERE cost_component = 'total_economic')) > 2"
+  - name: economic_plus_qol_is_comprehensive
+    sql: "SELECT injury_level FROM {this} GROUP BY injury_level HAVING abs(max(unit_cost_usd2019) FILTER (WHERE cost_component = 'total_economic') + max(unit_cost_usd2019) FILTER (WHERE cost_component = 'quality_of_life') - max(unit_cost_usd2019) FILTER (WHERE cost_component = 'total_comprehensive')) > 2"
+  - name: fatal_comprehensive_is_11_258_495
+    sql: "SELECT 1 WHERE (SELECT unit_cost_usd2019 FROM {this} WHERE injury_level = 'Fatal' AND cost_component = 'total_comprehensive') <> 11258495"

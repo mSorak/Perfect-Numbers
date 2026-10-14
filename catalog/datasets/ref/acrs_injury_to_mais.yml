@@ -1,0 +1,26 @@
+id: ref.acrs_injury_to_mais
+title: ACRS injury status → NHTSA unit-cost injury level (map v1)
+description: >
+  Maps the ACRS person injury status (KABCO scale) to the injury level used by NHTSA's 2019 unit costs
+  (ref.nhtsa_unit_cost_2019). Map v1 is the one used by the published crash-cost model (method 2026.1).
+grain: one row per map version × ACRS injury code
+primary_key: [map_version, acrs_injury_code]
+layer: seed
+access_mode: derived
+build: {seed: ref_acrs_injury_to_mais.csv, all_varchar: true}
+depends_on: ["seed:ref_acrs_injury_to_mais.csv"]
+license: {terms: "modelling choice (Matt, crash-cost model 2026)", redistribution: allowed}
+caveats:
+  - date: "2026-10-14"
+    text: "A KABCO → MAIS map is an approximation; v1 maps A (suspected serious) to MAIS4, which is on the high side of published translators. Changing it is a new map_version and a new cost method_version."
+  - date: "2026-10-14"
+    text: "ACRS persons with no injury status (e.g. 8,089 occupants in 2025H1) are not mapped here; crash.report_cost documents how they are treated."
+columns:
+  - {name: map_version, type: varchar, description: "Mapping version (v1 = method 2026.1)."}
+  - {name: acrs_injury_code, type: varchar, description: "ACRS InjuryStatus code, zero-padded text ('01'–'05')."}
+  - {name: acrs_injury_desc, type: varchar, description: "ACRS label."}
+  - {name: kabco, type: varchar, description: "KABCO letter."}
+  - {name: injury_level, type: varchar, description: "NHTSA unit-cost level (Fatal, MAIS0–MAIS5)."}
+tests:
+  - {unique: [map_version, acrs_injury_code]}
+  - {relationships: {column: injury_level, to: ref.nhtsa_unit_cost_2019}}

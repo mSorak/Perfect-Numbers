@@ -1,0 +1,20 @@
+source_id: nhtsa_fars
+publisher: NHTSA, Fatality Analysis Reporting System (FARS)
+landing_page: https://www.nhtsa.gov/research-data/fatality-analysis-reporting-system-fars
+terms: "Public domain (US government). Cite NHTSA FARS, the data year and file edition (Final / Annual Report File)."
+cadence:
+  upstream: "annual: the Annual Report File (ARF) for year Y appears ~spring Y+2; the prior year's ARF is replaced by its Final file at the same time; NHTSA occasionally re-issues older years"
+  ours: "check each April; snapshot on change (keep all editions)"
+retention: "keep all snapshots (editions differ: ARF vs Final, and re-issues)"
+scope: "National files only (FARS publishes no per-state files); kept as served (each zip < 50 MB). Filter to Maryland in staging."
+hazards:
+  - File layout changes over time (1975 has 3 upper-case CSVs at the zip root; recent years ~30 lower-case CSVs inside FARS<year>NationalCSV/). Staging maps per-year layouts.
+  - Variable codes change across years; `ref.fars_codes` maps them. Non-motorist = per_typ IN (4,5,6,7,8,10,19), verified per year against the FARS manual.
+  - 2026-04-01 NHTSA re-issued 2021–2023 and posted 2024 (ARF). The 2021–2023 editions used in the 2025 pedestrian-deaths piece are kept as earlier snapshots (legacy intake).
+  - Files are cp1252 / latin-1 in older years.
+entities:
+  national_csv:
+    connector: http_file
+    url: "https://static.nhtsa.gov/nhtsa/downloads/FARS/{period}/National/FARS{period}NationalCSV.zip"
+    filename: "FARS{period}NationalCSV.zip"
+    periods: "1975-2024"

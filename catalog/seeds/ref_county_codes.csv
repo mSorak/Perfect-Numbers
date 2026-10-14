@@ -1,0 +1,25 @@
+county_geoid,county_fips,mdot_code,county_name,acrs_county_name,mdot_county_desc
+24001,001,1,Allegany County,Allegany,ALLEGANY
+24003,003,2,Anne Arundel County,Anne Arundel,ANNE ARUNDEL
+24005,005,3,Baltimore County,Baltimore County,BALTIMORE
+24009,009,4,Calvert County,Calvert,CALVERT
+24011,011,5,Caroline County,Caroline,CAROLINE
+24013,013,6,Carroll County,Carroll,CARROLL
+24015,015,7,Cecil County,Cecil,CECIL
+24017,017,8,Charles County,Charles,CHARLES
+24019,019,9,Dorchester County,Dorchester,DORCHESTER
+24021,021,10,Frederick County,Frederick,FREDERICK
+24023,023,11,Garrett County,Garrett,GARRETT
+24025,025,12,Harford County,Harford,HARFORD
+24027,027,13,Howard County,Howard,HOWARD
+24029,029,14,Kent County,Kent,KENT
+24031,031,15,Montgomery County,Montgomery,MONTGOMERY
+24033,033,16,Prince George's County,Prince George's,PRINCE GEORGE'S
+24035,035,17,Queen Anne's County,Queen Anne's,QUEEN ANNE'S
+24037,037,18,St. Mary's County,St. Mary's,ST. MARY'S
+24039,039,19,Somerset County,Somerset,SOMERSET
+24041,041,20,Talbot County,Talbot,TALBOT
+24043,043,21,Washington County,Washington,WASHINGTON
+24045,045,22,Wicomico County,Wicomico,WICOMICO
+24047,047,23,Worcester County,Worcester,WORCESTER
+24510,510,24,Baltimore city,Baltimore City,BALTIMORE CITY

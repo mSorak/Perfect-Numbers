@@ -1,0 +1,23 @@
+source_id: census_api
+publisher: U.S. Census Bureau, Census Data API
+landing_page: https://www.census.gov/data/developers.html
+terms: "Public domain (US government). Cite the Census Bureau, survey, vintage and table."
+cadence: {upstream: "ACS 5-year each December; ACS 1-year each September", ours: "pin a vintage per analysis; add a new entity per vintage"}
+hazards:
+  - A published ACS vintage never changes, so each vintage is its own entity (acs5_<vintage>) and is fetched once.
+  - Tract and place geographies follow the vintage's definitions (2020 tracts for 2020–24); record geoid_vintage.
+  - ACS 2021–25 may slip (DAO 216-26); `pn status` should flag when it appears.
+  - Annotation columns (EA/MA) carry jam values (e.g. -666666666 for not available); staging turns them into nulls.
+entities:
+  acs5_2024:
+    connector: census_api
+    dataset: acs/acs5
+    vintage: 2024
+    label: "ACS 2020–2024 5-year"
+    groups:
+      - B01003   # total population
+    geographies:
+      state:  {for: "state:24"}
+      county: {for: "county:*", in: "state:24"}
+      place:  {for: "place:*", in: "state:24"}
+      tract:  {for: "tract:*", in: "state:24 county:*"}

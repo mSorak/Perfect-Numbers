@@ -1,0 +1,20 @@
+source_id: mdot_sha_aadt
+publisher: MDOT State Highway Administration
+landing_page: https://data.imap.maryland.gov (search "AADT"; item 77010abe7558425997b4fcdab02e2b64)
+platform: ArcGIS Online FeatureServer (org njFNhDsUCentVYJW)
+terms: "Public; cite MDOT SHA."
+cadence: {upstream: "annual (~August)", ours: "check monthly; snapshot when dataLastEditDate changes"}
+retention: keep all snapshots (oldest years roll off each release)
+hazards:
+  - The unsuffixed AADT/AAWDT ("current") columns change meaning each release. Staging assigns an explicit year = (latest AADT_<year> column) + 1, recorded per snapshot in `current_year_method`.
+  - Oldest years roll off (AADT_2015 is now mostly null); keep every annual snapshot.
+  - Non-count years are factored estimates; COUNTED_FACTORED distinguishes them for the current year only.
+  - Native SR is 3857; the connector always requests outSR=4326.
+  - Avoid stale mirrors (iMAP MD_AnnualAverageDailyTraffic; Socrata qu2r-h2f9 etc.).
+entities:
+  aadt_station:
+    connector: arcgis
+    url: https://services.arcgis.com/njFNhDsUCentVYJW/ArcGIS/rest/services/MDOT_SHA_Annual_Average_Daily_Traffic/FeatureServer/0
+  aadt_segment:
+    connector: arcgis
+    url: https://services.arcgis.com/njFNhDsUCentVYJW/ArcGIS/rest/services/MDOT_SHA_Annual_Average_Daily_Traffic/FeatureServer/1

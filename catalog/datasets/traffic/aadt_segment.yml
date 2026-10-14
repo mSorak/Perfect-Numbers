@@ -1,0 +1,50 @@
+id: traffic.aadt_segment
+title: MDOT SHA traffic-count segments (AADT network), statewide
+description: >
+  Road segments on MDOT SHA's AADT network with route, functional class, lanes and geometry. Volumes by
+  year are in `traffic.aadt_segment_year` (join on segment_id). Covers state, interstate and many county
+  roads statewide; local streets are mostly absent.
+grain: one row per AADT segment (in the source snapshot)
+primary_key: [segment_id]
+layer: staging
+access_mode: mirror
+source: mdot_sha_aadt
+build: {python: "pipelines/traffic/aadt.py:aadt_segment"}
+depends_on: [raw:mdot_sha_aadt/aadt_segment, ref.county_codes]
+license: {terms: public, redistribution: attribution, citation: "MDOT SHA, Annual Average Daily Traffic (FeatureServer), retrieved {retrieved_at}"}
+caveats:
+  - date: "2026-10-14"
+    text: "segment_id is the source GlobalID, which is stable only within a snapshot; LOCATION_ID (the count station) is shared by several segments. Compare releases by route + milepoints, not by segment_id."
+  - date: "2026-10-14"
+    text: "num_lanes and counted_factored_latest describe the latest release year only."
+columns:
+  - {name: segment_id, type: varchar, description: "Source GlobalID."}
+  - {name: location_id, type: varchar, description: "Count station ID (shared by several segments)."}
+  - {name: county_geoid, type: varchar, description: "County FIPS via ref.county_codes."}
+  - {name: mdot_county_code, type: integer, description: "MDOT alphabetical county code (not FIPS)."}
+  - {name: municipality, type: varchar, description: "Municipality, if any."}
+  - {name: road_name, type: varchar, description: "Road name (e.g. JONES FALLS EXPWY)."}
+  - {name: id_prefix, type: varchar, description: "Route prefix: IS interstate, US, MD, CO county, MU municipal, …"}
+  - {name: route_number, type: varchar, description: "Route number (I-83 = IS 83)."}
+  - {name: route_id_rh, type: varchar, description: "SHA route ID."}
+  - {name: road_section, type: varchar, description: "Section description as published."}
+  - {name: begin_mp, type: double, description: "Begin milepoint."}
+  - {name: end_mp, type: double, description: "End milepoint."}
+  - {name: station_desc, type: varchar, description: "Count station description."}
+  - {name: rural_urban, type: varchar, description: "Rural/urban code."}
+  - {name: f_system, type: integer, description: "HPMS functional system code (1 interstate … 7 local)."}
+  - {name: f_system_desc, type: varchar, description: "Functional system label."}
+  - {name: main_line, type: varchar, description: "Main line flag."}
+  - {name: num_lanes, type: integer, description: "Through lanes (latest release)."}
+  - {name: counted_factored_latest, type: varchar, description: "C counted / F factored, for the latest year only."}
+  - {name: latest_year, type: integer, description: "Year the release's unsuffixed AADT column represents (inferred, see traffic.aadt_segment_year.year_method)."}
+  - {name: length_m, type: double, description: "Segment length in metres (EPSG:26985)."}
+  - {name: source_snapshot_id, type: varchar, description: "Raw snapshot this row came from."}
+  - {name: geometry, type: geometry, description: "LineString, OGC:CRS84."}
+tests:
+  - {unique: segment_id}
+  - {not_null: [segment_id, county_geoid, length_m]}
+  - name: statewide_length_band
+    sql: "SELECT sum(length_m) / 1609.344 AS miles FROM {this} HAVING miles NOT BETWEEN 8000 AND 30000"
+  - name: i83_present_in_baltimore
+    sql: "SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM {this} WHERE id_prefix = 'IS' AND route_number = '83' AND county_geoid IN ('24510', '24005'))"

@@ -1,0 +1,6 @@
+map_version,acrs_injury_code,acrs_injury_desc,kabco,injury_level
+v1,01,Fatal Injury,K,Fatal
+v1,02,Suspected Serious Injury,A,MAIS4
+v1,03,Suspected Minor Injury,B,MAIS2
+v1,04,Possible Injury,C,MAIS1
+v1,05,No Apparent Injury,O,MAIS0

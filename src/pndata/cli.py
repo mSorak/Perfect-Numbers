@@ -18,7 +18,7 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-app = typer.Typer(no_args_is_help=True, help="Perfect Numbers data hub")
+app = typer.Typer(no_args_is_help=True, help="Perfect Numbers data hub", pretty_exceptions_show_locals=False)
 
 KNOWN_KEYS = ("IPUMS_API_KEY", "CENSUS_API_KEY", "BLS_API_KEY", "FRED_API_KEY",
               "DATA_GOV_API_KEY", "HUD_API_TOKEN", "SOCRATA_APP_TOKEN", "WMATA_API_KEY")
@@ -51,8 +51,25 @@ def version() -> None:
     typer.echo(__version__)
 
 
+def _expand_periods(cfg: dict, only: list[str] | None) -> list[tuple[str | None, dict]]:
+    """An entity with `periods` ("1975-2024" or a list) fetches once per period; `{period}` in url/filename."""
+    spec = cfg.get("periods")
+    if not spec:
+        return [(cfg.get("period"), cfg)]
+    if isinstance(spec, str):
+        lo, hi = (int(x) for x in spec.split("-"))
+        spec = [str(y) for y in range(lo, hi + 1)]
+    out = []
+    for p in map(str, spec):
+        if only and p not in only:
+            continue
+        out.append((p, {**cfg, **{k: cfg[k].format(period=p) for k in ("url", "filename") if k in cfg}}))
+    return out
+
+
 @app.command()
-def fetch(source_id: str, entity: list[str] = typer.Option(None, "--entity", "-e", help="Only these entities")) -> None:
+def fetch(source_id: str, entity: list[str] = typer.Option(None, "--entity", "-e", help="Only these entities"),
+          period: list[str] = typer.Option(None, "--period", "-p", help="Only these periods (entities with `periods`)")) -> None:
     """Fetch a source's entities into immutable raw snapshots (skips unchanged)."""
     from pndata.cards import source_cards
     from pndata.connectors import CONNECTORS
@@ -61,25 +78,27 @@ def fetch(source_id: str, entity: list[str] = typer.Option(None, "--entity", "-e
     src = source_cards().get(source_id)
     if not src:
         raise typer.BadParameter(f"no source card {source_id!r}")
-    for name, cfg in src["entities"].items():
+    for name, ecfg in src["entities"].items():
         if entity and name not in entity:
             continue
-        if cfg.get("connector") == "manual":
+        if ecfg.get("connector") == "manual":
             typer.echo(f"- {source_id}/{name}: manual source; use `pn intake`")
             continue
-        work = data_root() / "tmp" / f"fetch_{source_id}_{name}_{datetime.now(timezone.utc):%H%M%S}"
-        work.mkdir(parents=True)
-        try:
-            meta = CONNECTORS[cfg["connector"]](cfg, work)
-            rec = commit_snapshot(work, source_id, name, meta, period=cfg.get("period"))
-        except Exception:
-            shutil.rmtree(work, ignore_errors=True)
-            raise
-        if rec is None:
-            typer.echo(f"= {source_id}/{name}: unchanged since last snapshot")
-        else:
-            rows = f", {rec['rows']:,} rows" if rec.get("rows") else ""
-            typer.echo(f"✓ {source_id}/{name}: snapshot {rec['snapshot_id']}{rows}")
+        for per, cfg in _expand_periods(ecfg, period):
+            label = f"{source_id}/{name}" + (f" {per}" if per else "")
+            work = data_root() / "tmp" / f"fetch_{source_id}_{name}_{per or ''}_{datetime.now(timezone.utc):%H%M%S}"
+            work.mkdir(parents=True)
+            try:
+                meta = CONNECTORS[cfg["connector"]](cfg, work)
+                rec = commit_snapshot(work, source_id, name, meta, period=per)
+            except Exception:
+                shutil.rmtree(work, ignore_errors=True)
+                raise
+            if rec is None:
+                typer.echo(f"= {label}: unchanged since last snapshot")
+            else:
+                rows = f", {rec['rows']:,} rows" if rec.get("rows") else ""
+                typer.echo(f"✓ {label}: snapshot {rec['snapshot_id']}{rows}")
 
 
 @app.command()
@@ -92,7 +111,8 @@ def intake(source_id: str,
            waive: list[str] = typer.Option(None, "--waive", help="Waiver code declared in the source card"),
            note: str = typer.Option(None, "--note", help="Note recorded in the manifest (required with --waive: why it applies)"),
            no_reconcile: bool = typer.Option(False, "--no-reconcile", help="Skip the publisher reconciliation"),
-           dry_run: bool = typer.Option(False, "--dry-run", help="Run checks only; commit nothing")) -> None:
+           dry_run: bool = typer.Option(False, "--dry-run", help="Run checks only; commit nothing"),
+           entity: str = typer.Option(None, "--entity", "-e", help="Entity for a single file (skips header detection; needed for non-CSV files)")) -> None:
     """Check manually downloaded files and commit them as raw snapshots (one per entity)."""
     from pathlib import Path
 
@@ -111,7 +131,8 @@ def intake(source_id: str,
         when = when if when.tzinfo else when.astimezone()
     try:
         run_intake(src, period, [Path(f) for f in files or []], copy=copy, retrieved_at=when, ui=ui,
-                   waivers=waive, waiver_note=note, reconcile=not no_reconcile, dry_run=dry_run, log=typer.echo)
+                   waivers=waive, waiver_note=note, reconcile=not no_reconcile, dry_run=dry_run, entity=entity,
+                   log=typer.echo)
     except IntakeError as e:
         typer.echo(f"✗ {e}")
         raise typer.Exit(code=1)

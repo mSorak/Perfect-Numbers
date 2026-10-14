@@ -1,0 +1,27 @@
+id: ref.county_codes
+title: Maryland county code crosswalk (FIPS ↔ MDOT/ACRS ↔ names)
+description: >
+  One row per Maryland county or county-equivalent. MDOT SHA and ACRS (MDSP crash reports) number
+  counties alphabetically 1–24 with Baltimore City last (24) and Baltimore County 3; these are not FIPS.
+  Join any MDOT/ACRS county code through this table to get `county_geoid`.
+grain: one row per county (24)
+primary_key: [county_geoid]
+layer: seed
+access_mode: derived
+build: {seed: ref_county_codes.csv, all_varchar: true}
+depends_on: ["seed:ref_county_codes.csv"]
+license: {terms: "hand-built from Census FIPS and MDOT/MDSP code lists", redistribution: allowed}
+caveats:
+  - date: "2026-10-14"
+    text: "Codes verified against MDOT SHA AADT (COUNTY_ID/COUNTY_DESC, 2026-10 pull) and ACRS (Crash County / Crash County Description, 2024–2025 exports). ACRS codes are zero-padded text ('03'); compare as integers."
+columns:
+  - {name: county_geoid, type: varchar, description: "5-digit county FIPS (24510 = Baltimore city)."}
+  - {name: county_fips, type: varchar, description: "3-digit county FIPS."}
+  - {name: mdot_code, type: varchar, description: "MDOT/ACRS alphabetical county code, 1–24 (text; cast to integer to join)."}
+  - {name: county_name, type: varchar, description: "Census county name."}
+  - {name: acrs_county_name, type: varchar, description: "Name as in ACRS 'Crash County Description'."}
+  - {name: mdot_county_desc, type: varchar, description: "Name as in MDOT SHA COUNTY_DESC."}
+tests:
+  - {unique: county_geoid}
+  - {unique: mdot_code}
+  - {row_count: {min: 24, max: 24}}

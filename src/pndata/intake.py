@@ -104,8 +104,11 @@ def _rel(path: Path) -> str:
 def intake(source: dict, period: str, files: list[Path] | None = None, copy: bool = False,
            retrieved_at: datetime | None = None, retrieved_at_method: str | None = None,
            ui: str | None = None, waivers: list[str] | None = None, waiver_note: str | None = None,
-           reconcile: bool = True, dry_run: bool = False, log=print) -> list[dict]:
-    """Check and commit one batch. Returns the manifest records (empty on dry run or if all unchanged)."""
+           reconcile: bool = True, dry_run: bool = False, entity: str | None = None,
+           log=print) -> list[dict]:
+    """Check and commit one batch. Returns the manifest records (empty on dry run or if all unchanged).
+
+    `entity` skips header detection (one file only); non-CSV files get only the batch-level checks."""
     source_id = source["source_id"]
     entities = source["entities"]
     cfg = source.get("intake", {})
@@ -117,6 +120,8 @@ def intake(source: dict, period: str, files: list[Path] | None = None, copy: boo
         files = sorted(p for p in inbox.iterdir() if p.is_file()) if inbox.is_dir() else []
     if not files:
         raise ValueError(f"no files given and nothing in {inbox}")
+    if entity and (entity not in entities or len(files) != 1):
+        raise ValueError(f"--entity needs exactly one file and one of {sorted(entities)}")
     waivers = waivers or []
     for w in waivers:
         if w not in cfg.get("waivers", {}):
@@ -127,21 +132,21 @@ def intake(source: dict, period: str, files: list[Path] | None = None, copy: boo
     try:
         for f in files:
             f = Path(f)
-            entity = detect_entity(read_header(f), entities)
-            if entity is None:
+            ent = entity or detect_entity(read_header(f), entities)
+            if ent is None:
                 raise RuntimeError(f"{f.name}: header matches no entity of {source_id}; check the export "
                                    f"or add a header_signature to the source card")
-            if entity in items:
-                raise RuntimeError(f"{f.name} and {items[entity].src.name} are both {entity}")
-            work = stage / entity
+            if ent in items:
+                raise RuntimeError(f"{f.name} and {items[ent].src.name} are both {ent}")
+            work = stage / ent
             work.mkdir(parents=True)
             shutil.copy2(f, work / f.name)
             if sha256_file(work / f.name) != sha256_file(f):
                 raise RuntimeError(f"{f.name}: copy hash mismatch")
             when = retrieved_at or datetime.fromtimestamp(f.stat().st_mtime, timezone.utc)
-            items[entity] = Item(entity, f, work / f.name, when)
+            items[ent] = Item(ent, f, work / f.name, when)
 
-        missing = [e for e, c in entities.items() if c.get("required", True) and e not in items]
+        missing = [] if entity else [e for e, c in entities.items() if c.get("required", True) and e not in items]
         checks = _run_checks(source, items, start, end, missing, cfg)
         if reconcile and cfg.get("reconcile"):
             _reconcile(cfg["reconcile"], items, start, end, log)
@@ -164,7 +169,7 @@ def intake(source: dict, period: str, files: list[Path] | None = None, copy: boo
         batch_checks = {c.name: c.record() for c in checks}
         session_id = f"{min(it.retrieved_at for it in items.values()):%Y%m%dT%H%MZ}"
         records = []
-        for entity, it in items.items():
+        for ent, it in items.items():
             meta = {
                 "method": "manual",
                 "original_filename": it.src.name,
@@ -183,12 +188,12 @@ def intake(source: dict, period: str, files: list[Path] | None = None, copy: boo
                 meta["waivers"] = [{"code": w, "note": waiver_note} for w in waivers]
             elif waiver_note:
                 meta["note"] = waiver_note
-            rec = commit_snapshot(it.work.parent, source_id, entity, meta, period=period,
+            rec = commit_snapshot(it.work.parent, source_id, ent, meta, period=period,
                                   retrieved_at=it.retrieved_at)
             if rec is None:
-                log(f"= {source_id}/{entity} {period}: identical to the existing snapshot")
+                log(f"= {source_id}/{ent} {period}: identical to the existing snapshot")
             else:
-                log(f"✓ {source_id}/{entity}: {rec['snapshot_id']}, {it.rows:,} rows")
+                log(f"✓ {source_id}/{ent}: {rec['snapshot_id']}" + (f", {it.rows:,} rows" if it.rows else ""))
                 records.append(rec)
         if not copy:
             for it in items.values():
@@ -208,6 +213,9 @@ def _run_checks(source: dict, items: dict[str, Item], start: date, end: date, mi
     con = duckdb.connect()
     for entity, it in items.items():
         ecfg = entities[entity]
+        if it.work.suffix.lower() != ".csv":
+            it.checks.append(Check("file", "pass", f"{it.work.stat().st_size:,} bytes; not CSV, content checks skipped"))
+            continue
         it.columns = read_header(it.work)
         con.execute(f"CREATE VIEW {_q(entity)} AS FROM {_rel(it.work)}")
         it.rows = con.execute(f"SELECT count(*) FROM {_q(entity)}").fetchone()[0]

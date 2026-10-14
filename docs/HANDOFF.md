@@ -35,7 +35,28 @@ Plan: `03_proposal.md` §10, "Phase 2". The work items, in order:
   - **Finding:** three legacy Vehicles files are mislabeled by half-year. `Vehicles_010124_063124` holds 2024H2, `Vehicles_070124_123124` holds 2025H1 and `Vehicles_010125_063125` holds 2024H1.
   - Each one matches 100% of one Reports file and 0% of the others. They were paired by content, and each manifest line has a `note` saying so.
   - The concatenated `*_maryland_2024_2025.csv` files cover all of them, so the legacy cost analysis is unaffected.
-- **Next:** item 4 (staging cards). Read the half-years from the manifest by `period`, not by file name.
+- **Next:** item 4 (staging cards). Read the half-years from the manifest by `period`, not by file name. Globs over a snapshot folder must skip `_`-prefixed files (e.g. `Reports_*.csv`, not `*.csv`; the reports folder holds `_reconciliation.csv`).
+
+**More sources added (2026-10-14, second pass):**
+- **`econ.cpi_u`** (source `bls`, connector `bls_api`). It holds CUUR0000SA0, CUSR0000SA0 and Baltimore CUURS35ESA0, 1975–2026-09.
+  - June 2019 → June 2025 = 322.561 / 256.143 = **1.2593**.
+  - October 2025 has no published value (shutdown).
+- **Census ACS:** the `census_api` connector and its source card (`acs5_2024`, B01003, for state, county, place and tract) are written.
+  - **Blocked:** the API rejects `CENSUS_API_KEY` as "Invalid Key". The key is well-formed, so it probably needs activating from the emailed link.
+  - Then run `pn fetch census_api` and write the `census.acs5` staging card.
+- **AADT** (source `mdot_sha_aadt`, stations and segments): `traffic.aadt_segment` (10,013) and `traffic.aadt_segment_year` (long, explicit years 2016–2025, with VMT).
+  - The unsuffixed column = newest `AADT_<year>` + 1 = 2025, recorded in `year_method`.
+  - Statewide ≈57B VMT in 2019; I-83 is 34.3 mi in Baltimore City and County.
+- **FARS** (source `nhtsa_fars`, entity `national_csv`, `periods: 1975-2024`): all 50 national zips are fetched from static.nhtsa.gov.
+  - 1975–2020 are byte-identical to the legacy zips.
+  - NHTSA re-issued 2021–2023 on 2026-04-01. The legacy editions (used in pedestrian_deaths) were intaken as earlier snapshots with `pn intake --entity`.
+  - Not staged yet (`crash.fars_*`, `ref.fars_codes`).
+- **Seeds:** `ref.county_codes` (FIPS ↔ MDOT/ACRS alphabetical codes, verified against AADT and ACRS), `ref.nhtsa_unit_cost_2019` (Table 1-10, long format, with sum tests) and `ref.acrs_injury_to_mais` (map v1).
+  - 8,089 occupants in 2025H1 have no injury status. Check how the legacy model treated them during parity work.
+- **CLI:**
+  - `pn fetch` supports per-period entities (`periods:` plus `{period}` in url and filename; `--period` to limit).
+  - `pn intake --entity` covers non-CSV single files.
+  - Tracebacks no longer print local variables, so keys can't leak.
 
 **1. Build `pn intake`** (the `manual` connector). It isn't written yet. Requirements:
 - Move files from `$PN_DATA_ROOT/inbox/<source>/` into `raw/<source>/<entity>/<snapshot_id>__<period>/`, read-only.

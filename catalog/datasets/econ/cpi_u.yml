@@ -1,0 +1,39 @@
+id: econ.cpi_u
+title: Consumer Price Index for All Urban Consumers (CPI-U), BLS
+description: >
+  CPI-U all-items index levels (1982-84=100), monthly and annual average, for the U.S. city average
+  (not seasonally adjusted and seasonally adjusted) and Baltimore-Columbia-Towson (NSA). Use the NSA
+  U.S. series CUUR0000SA0 for inflation adjustment (metric `to_real_dollars`); crash-cost method 2026.1
+  uses June 2019 → June 2025.
+grain: one row per series × year × period
+primary_key: [series_id, year, period]
+layer: staging
+access_mode: mirror
+source: bls
+build: {sql: pipelines/econ/cpi_u.sql}
+depends_on: [raw:bls/cpi_u]
+period: {field: month, grain: month}
+license: {terms: public domain, redistribution: allowed, citation: "U.S. Bureau of Labor Statistics, CPI-U ({series_id}), retrieved {retrieved_at}"}
+caveats:
+  - date: "2026-10-14"
+    text: "October 2025 has no published value (data not collected during the federal shutdown); cpi is null for that month. Annual average 2025 is as published by BLS."
+  - date: "2026-10-14"
+    text: "Baltimore-Columbia-Towson is published bimonthly in recent years, with gaps in its history (34 annual averages 1975–2025); months without a release are absent. The API returned no half-year (S01/S02) rows."
+columns:
+  - {name: series_id, type: varchar, description: "BLS series ID (CUUR0000SA0 U.S. NSA, CUSR0000SA0 U.S. SA, CUURS35ESA0 Baltimore NSA)."}
+  - {name: area, type: varchar, description: "Area the index covers."}
+  - {name: is_seasonally_adjusted, type: boolean, description: "True for seasonally adjusted series."}
+  - {name: year, type: integer, description: "Reference year."}
+  - {name: period, type: varchar, description: "BLS period code: M01–M12 month, M13 annual average, S01/S02 half-year."}
+  - {name: period_type, type: varchar, description: "month, annual_average or half_year."}
+  - {name: month, type: date, description: "First day of the month (null for annual and half-year rows)."}
+  - {name: cpi, type: double, description: "Index level, 1982-84=100. Null where BLS published no value."}
+  - {name: base, type: varchar, description: "Index base period."}
+  - {name: footnotes, type: varchar, description: "BLS footnotes, if any (e.g. preliminary)."}
+tests:
+  - {unique: [series_id, year, period]}
+  - {not_null: [series_id, year, period]}
+  - name: june_2019_and_june_2025_present
+    sql: "SELECT 1 WHERE (SELECT count(*) FROM {this} WHERE series_id = 'CUUR0000SA0' AND month IN (DATE '2019-06-01', DATE '2025-06-01') AND cpi IS NOT NULL) <> 2"
+  - name: method_2026_1_deflator_near_1_259
+    sql: "SELECT j25 / j19 AS f FROM (SELECT max(cpi) FILTER (WHERE month = DATE '2019-06-01') j19, max(cpi) FILTER (WHERE month = DATE '2025-06-01') j25 FROM {this} WHERE series_id = 'CUUR0000SA0') WHERE abs(j25 / j19 - 1.259) > 0.002"

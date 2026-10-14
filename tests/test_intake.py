@@ -110,3 +110,13 @@ def test_unknown_header_and_missing_entity(root):
         intake(SOURCE, "2025H1", [r, bad], copy=True, reconcile=False, log=lambda *_: None)
     with pytest.raises(IntakeError, match="entities_present"):
         intake(SOURCE, "2025H1", [r], copy=True, reconcile=False, log=lambda *_: None)
+
+
+def test_explicit_entity_for_non_csv(root):
+    z = root / "data" / "inbox" / "test_src" / "bundle.zip"
+    z.write_bytes(b"PK\x05\x06" + b"\x00" * 18)
+    src = {**SOURCE, "entities": {**SOURCE["entities"], "bundle": {"required": False}}}
+    recs = intake(src, "2021", [z], copy=True, entity="bundle", reconcile=False, log=lambda *_: None)
+    assert recs[0]["entity"] == "bundle" and recs[0]["intake_checks"]["file"]["status"] == "pass"
+    with pytest.raises(ValueError, match="--entity"):
+        intake(src, "2021", [z, z], copy=True, entity="bundle", reconcile=False, log=lambda *_: None)
