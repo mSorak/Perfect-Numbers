@@ -37,6 +37,27 @@ Plan: `03_proposal.md` §10, "Phase 2". The work items, in order:
   - The concatenated `*_maryland_2024_2025.csv` files cover all of them, so the legacy cost analysis is unaffected.
 - **Next:** item 4 (staging cards). Read the half-years from the manifest by `period`, not by file name. Globs over a snapshot folder must skip `_`-prefixed files (e.g. `Reports_*.csv`, not `*.csv`; the reports folder holds `_reconciliation.csv`).
 
+**Crash tables and parity (2026-10-14, fourth pass): items 4 and 5 are done for report-level costs.**
+- **Staging:** `crash.acrs_report` (287,019 reports, 2024-01 → 2026-09), `crash.acrs_vehicle` and `crash.acrs_person` (occupants + non-motorists; age and sex tagged pii).
+  - Code is in `pipelines/crash/acrs.py`. The card parameter `snapshot_grain` picks the newest snapshot per `month` (current, the default) or per `half_year` (legacy). The build runner gained `ctx.raw_set()` and `manifest.select_snapshots()` for this.
+- **`crash.report_cost`** (mart, method 2026.1, 2019 $ × `legacy_factor` 1.26) and **`crash.report_geo`** (point-in-polygon county and tract, TIGER 2024).
+- **Parity** (`tests/test_crash_parity.py`, marker `parity`): the same code run on the legacy half-years reproduces `crash_cost_eval.csv`:
+  - 210,860 reports, all 12 cost columns row for row, vehicle and person counts;
+  - 2024 = $41.044B and 2025 = $37.339B.
+  - Legacy model rules confirmed from its notebook:
+    - PDO crashes (severity 3) are costed as n_vehicles × PDOVehicle; others as Σ persons × unit cost.
+    - Persons with no injury status cost 0.
+    - Year = crash date year.
+- **Geography difference (deliberate):** the published join used shoreline-clipped NHGIS shapes, which leave crashes on water (bridges, tunnels, harbor) unassigned. The hub's TIGER polygons include water, so it assigns them: 461 reports, $194.8M in 2024–2025.
+  - Everywhere the published join assigned a county, the hub agrees exactly.
+  - Boundary points use "intersects", with ties going to the lowest GEOID.
+- **Exit answer holds:** Howard County 2025 = $1.2995B (spatial county) ÷ 336,328 (ACS 2020–24 B01003, `census.acs5`) = **$3,864** per resident. This is a test.
+  - The ACRS "Crash County" field gives $1.2937B. **Use `crash.report_geo` for county summaries.**
+- **`census.acs5`** is built: B01003 for state, 24 counties, 536 places and 1,475 tracts. The Census key works now; the first "Invalid Key" was activation lag.
+- **Next:**
+  - `crash.summary_*` with parity against `geo_summaries/merged_*.csv`. This needs `geo.place`, TIGER 2024 places; the published place summaries use NHGIS shoreline-clipped polygons too.
+  - Then item 6: FARS staging, the I-83 corridor area, and the BaCo cross-check.
+
 **MDSP automation (2026-10-14, third pass): item 2 is done.**
 - The spike (`docs/design/05_mdsp_tableau_spike.md`) found an API route. The `tableau_public` connector (`src/pndata/connectors/tableau_public.py`) pulls all 8 ACRS tables per month from one guest session, with all fields and no row cap, about 60 s per month.
 - `pn fetch mdsp_acrs` (the card's `fetch:` block) runs the connector, then the `pn intake` checks, for each month:
@@ -64,8 +85,7 @@ Plan: `03_proposal.md` §10, "Phase 2". The work items, in order:
   - June 2019 → June 2025 = 322.561 / 256.143 = **1.2593**.
   - October 2025 has no published value (shutdown).
 - **Census ACS:** the `census_api` connector and its source card (`acs5_2024`, B01003, for state, county, place and tract) are written.
-  - **Blocked:** the API rejects `CENSUS_API_KEY` as "Invalid Key". The key is well-formed, so it probably needs activating from the emailed link.
-  - Then run `pn fetch census_api` and write the `census.acs5` staging card.
+  - Resolved: the key works after activation, and `census.acs5` is built (see the fourth pass).
 - **AADT** (source `mdot_sha_aadt`, stations and segments): `traffic.aadt_segment` (10,013) and `traffic.aadt_segment_year` (long, explicit years 2016–2025, with VMT).
   - The unsuffixed column = newest `AADT_<year>` + 1 = 2025, recorded in `year_method`.
   - Statewide ≈57B VMT in 2019; I-83 is 34.3 mi in Baltimore City and County.

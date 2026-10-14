@@ -8,8 +8,8 @@ Road segments on MDOT SHA's AADT network with route, functional class, lanes and
 - **Source:** mdot_sha_aadt
 - **Depends on:** raw:mdot_sha_aadt/aadt_segment, ref.county_codes
 - **Card:** `catalog/datasets/traffic/aadt_segment.yml`
-- **Current build:** 20261014T193422Z · 10,013 rows · git 839fb53
-- **Inputs:** {'datasets': {'ref.county_codes': '20261014T193421Z'}, 'raw': {'mdot_sha_aadt/aadt_segment': '20261014T1932Z'}}
+- **Current build:** 20261014T210804Z · 10,013 rows · git c2a0ea2
+- **Inputs:** {'datasets': {'ref.county_codes': '20261014T210156Z'}, 'raw': {'mdot_sha_aadt/aadt_segment': '20261014T1932Z'}}
 
 ## Columns
 

@@ -1,0 +1,68 @@
+id: crash.report_cost
+title: Estimated societal cost of each Maryland crash report (method 2026.1)
+description: >
+  Comprehensive societal cost per ACRS crash report using NHTSA's 2019 unit costs (Blincoe et al. 2023,
+  Table 1-10), by component, in 2025 dollars. Method 2026.1 reproduces the published Perfect Numbers
+  crash-cost model: property-damage-only crashes cost (vehicles × PDOVehicle); injury and fatal crashes
+  cost Σ persons × the unit cost of their injury level (ACRS → MAIS map v1). Headline column:
+  total_comprehensive_usd2025.
+grain: one row per crash report
+primary_key: [report_number]
+layer: mart
+access_mode: derived
+build: {python: "pipelines/crash/acrs.py:report_cost"}
+depends_on: [crash.acrs_report, crash.acrs_vehicle, crash.acrs_person, ref.nhtsa_unit_cost_2019, ref.acrs_injury_to_mais, econ.cpi_u]
+parameters:
+  usd_year: 2025
+  deflator:
+    use_legacy_factor: true   # method 2026.1 = published model: 2019 $ × 1.26
+    legacy_factor: 1.26
+    from: "2019-06-01"        # used when use_legacy_factor is false (CPI-U NSA gives 1.2593)
+    to: "2025-06-01"
+period: {field: crash_date, grain: day}
+license: {terms: "derived from MDSP ACRS and NHTSA", redistribution: attribution, citation: "Perfect Numbers crash-cost model 2026.1 (MDSP ACRS; NHTSA DOT HS 813 403)"}
+caveats:
+  - date: "2026-10-14"
+    text: "Costs are 2019 unit costs × 1.26 (June 2019 → June 2025, as published). CPI-U NSA gives 1.2593, about 0.06% lower; a CPI-based variant would be a new method version."
+  - date: "2026-10-14"
+    text: "Persons with no injury status are costed at zero, and injury crashes are costed only through their persons (no PDOVehicle cost for their vehicles), exactly as in the published model."
+  - date: "2026-10-14"
+    text: "Parity: built from the legacy half-year exports, this method matches crash_cost_eval.csv row for row (tests/test_crash_parity.py). This dataset reads the current monthly pulls, so its 2024–2025 totals differ slightly from the published ones."
+columns:
+  - {name: report_number, type: varchar, description: "ACRS report number (crash.acrs_report)."}
+  - {name: crash_date, type: date, description: "Crash date."}
+  - {name: crash_year, type: bigint, description: "Crash year."}
+  - {name: county_geoid, type: varchar, description: "County FIPS (ACRS Crash County)."}
+  - {name: severity_code, type: integer, description: "1 fatal, 2 injury, 3 property damage only."}
+  - {name: severity, type: varchar, description: "Severity label."}
+  - {name: n_vehicles, type: bigint, description: "Vehicles on the report."}
+  - {name: n_persons, type: bigint, description: "Persons on the report (occupants + non-motorists)."}
+  - {name: n_persons_no_injury_status, type: bigint, description: "Persons with no injury status (costed at zero)."}
+  - {name: n_fatal, type: bigint, description: "Persons killed."}
+  - {name: n_serious_injury, type: bigint, description: "Persons with suspected serious injury (code 02)."}
+  - {name: medical_usd2025, type: double, description: "Medical cost component, 2025 dollars."}
+  - {name: ems_usd2025, type: double, description: "Emergency medical services."}
+  - {name: market_productivity_usd2025, type: double, description: "Lost market productivity."}
+  - {name: household_productivity_usd2025, type: double, description: "Lost household productivity."}
+  - {name: insurance_admin_usd2025, type: double, description: "Insurance administration."}
+  - {name: workplace_usd2025, type: double, description: "Workplace costs."}
+  - {name: legal_usd2025, type: double, description: "Legal costs."}
+  - {name: congestion_usd2025, type: double, description: "Congestion costs."}
+  - {name: property_damage_usd2025, type: double, description: "Property damage."}
+  - {name: total_economic_usd2025, type: double, description: "Total economic cost."}
+  - {name: quality_of_life_usd2025, type: double, description: "Quality-of-life (QALY) cost."}
+  - {name: total_comprehensive_usd2025, type: double, description: "Comprehensive cost = economic + quality of life. Headline figure."}
+  - {name: method_version, type: varchar, description: "Cost method version (2026.1)."}
+  - {name: injury_map_version, type: varchar, description: "ACRS → MAIS map version."}
+  - {name: deflator, type: double, description: "Multiplier applied to 2019 unit costs."}
+  - {name: deflator_method, type: varchar, description: "How the multiplier was set."}
+  - {name: source_period, type: varchar, description: "Snapshot period of the report."}
+tests:
+  - {unique: report_number}
+  - {not_null: [report_number, total_comprehensive_usd2025]}
+  - name: comprehensive_equals_economic_plus_qol
+    sql: "SELECT report_number FROM {this} WHERE abs(total_comprehensive_usd2025 - total_economic_usd2025 - quality_of_life_usd2025) > 0.01 * deflator * 2"
+  - name: fatal_crashes_cost_at_least_one_fatality
+    sql: "SELECT report_number FROM {this} WHERE n_fatal > 0 AND total_comprehensive_usd2025 < 11258495 * deflator - 1"
+  - name: annual_total_band
+    sql: "SELECT crash_year, sum(total_comprehensive_usd2025) / 1e9 b FROM {this} WHERE crash_year IN (2024, 2025) GROUP BY 1 HAVING b NOT BETWEEN 30 AND 50"

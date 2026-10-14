@@ -1,0 +1,39 @@
+id: crash.report_geo
+title: Census geography of each Maryland crash report (point in polygon, TIGER 2024)
+description: >
+  County and census tract (2024 TIGER/Line boundaries) containing each crash's coordinates. This is the
+  geography the published crash-cost summaries use; it can differ from ACRS 'Crash County'
+  (crash.acrs_report.county_geoid) near borders and where the officer's county differs from the point.
+  Join to crash.report_cost on report_number.
+grain: one row per crash report
+primary_key: [report_number]
+layer: staging
+access_mode: derived
+build: {python: "pipelines/crash/acrs.py:report_geo"}
+depends_on: [crash.acrs_report, geo.county, geo.tract]
+license: {terms: "derived from MDSP ACRS and Census TIGER/Line", redistribution: attribution}
+caveats:
+  - date: "2026-10-14"
+    text: "TIGER polygons include water, so crashes on bridges, tunnels and harbor crossings get a county and tract. The published crash-cost summaries used shoreline-clipped NHGIS shapes and left those unassigned (461 reports, $194.8M in 2024–2025); everywhere else the two agree (tests/test_crash_parity.py). Points outside every Maryland polygon get null."
+  - date: "2026-10-14"
+    text: "Points exactly on a boundary are assigned with 'intersects', ties to the lowest GEOID."
+  - date: "2026-10-14"
+    text: "Places (municipalities/CDPs) are not yet included; the published place summaries need TIGER place polygons (geo.place, not yet built)."
+columns:
+  - {name: report_number, type: varchar, description: "ACRS report number."}
+  - {name: county_geoid, type: varchar, description: "County containing the crash point (TIGER 2024); null if none."}
+  - {name: tract_geoid, type: varchar, description: "Census tract containing the crash point (TIGER 2024); null if none."}
+  - {name: geoid_vintage, type: integer, description: "Boundary vintage (2024)."}
+  - {name: acrs_county_geoid, type: varchar, description: "County from ACRS Crash County, for comparison."}
+  - {name: county_differs_from_acrs, type: boolean, description: "True when the point-in-polygon county differs from ACRS Crash County (or is null)."}
+  - {name: has_point, type: boolean, description: "True if the report has usable coordinates."}
+tests:
+  - {unique: report_number}
+  - {relationships: {column: tract_geoid, to: geo.tract, field: geoid}}
+  - name: tract_inside_county
+    sql: "SELECT report_number FROM {this} WHERE tract_geoid IS NOT NULL AND left(tract_geoid, 5) <> county_geoid"
+  - name: most_points_located
+    sql: "SELECT frac FROM (SELECT avg((county_geoid IS NOT NULL)::INT) frac FROM {this}) WHERE frac < 0.98"
+  - name: county_mostly_agrees_with_acrs
+    severity: warn
+    sql: "SELECT frac FROM (SELECT avg(county_differs_from_acrs::INT) frac FROM {this}) WHERE frac > 0.03"

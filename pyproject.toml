@@ -28,3 +28,6 @@ packages = ["src/pndata"]
 dev = [
     "pytest>=9.1.1",
 ]
+
+[tool.pytest.ini_options]
+markers = ["parity: reproduces published outputs; needs the data root and the legacy archive"]

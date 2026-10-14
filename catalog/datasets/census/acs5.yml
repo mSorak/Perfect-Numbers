@@ -1,0 +1,41 @@
+id: census.acs5
+title: American Community Survey 5-year estimates (Census API), long format
+description: >
+  ACS 5-year estimates with margins of error for Maryland geographies (state, county, place, tract), one row
+  per geography × variable. Add tables by listing them in the census_api source card (groups) and running
+  `pn fetch census_api`. Currently: B01003 total population, ACS 2020–2024.
+grain: one row per geography × vintage × variable
+primary_key: [geoid, geo_level, vintage, variable]
+layer: staging
+access_mode: mirror
+source: census_api
+build: {python: "pipelines/census/acs5.py:acs5"}
+depends_on: [raw:census_api/acs5_2024]
+license: {terms: public domain, redistribution: allowed, citation: "U.S. Census Bureau, American Community Survey {vintage_label}, table {table_id}, via the Census Data API, retrieved {retrieved_at}"}
+caveats:
+  - date: "2026-10-14"
+    text: "Estimates are 5-year period estimates (e.g. 2020–2024), not single-year values; state the vintage label with every number. Sum MOEs with the acs_sum_moe metric, never by adding."
+columns:
+  - {name: geoid, type: varchar, description: "Census GEOID (state 24, county 24027, place 2404000, tract 24027601100)."}
+  - {name: geo_level, type: varchar, description: "state, county, place or tract."}
+  - {name: name, type: varchar, description: "Census geography name."}
+  - {name: vintage, type: bigint, description: "End year of the 5-year period (2024 = 2020–2024)."}
+  - {name: survey, type: varchar, description: "acs5."}
+  - {name: vintage_label, type: varchar, description: "e.g. ACS 2020–2024 5-year."}
+  - {name: table_id, type: varchar, description: "Table (group) ID, e.g. B01003."}
+  - {name: variable, type: varchar, description: "Variable ID without suffix, e.g. B01003_001."}
+  - {name: label, type: varchar, description: "Census variable label."}
+  - {name: estimate, type: double, description: "Estimate; null where Census publishes a jam value."}
+  - {name: moe, type: double, description: "90% margin of error; null where not applicable."}
+  - {name: annotation, type: varchar, description: "Census annotation for the estimate, if any."}
+  - {name: source_snapshot_id, type: varchar, description: "Raw snapshot."}
+  - {name: geoid_vintage, type: integer, description: "Geography vintage (2020 census geographies)."}
+tests:
+  - {unique: [geoid, geo_level, vintage, variable]}
+  - {not_null: [geoid, geo_level, variable]}
+  - name: maryland_population_band
+    sql: "SELECT estimate FROM {this} WHERE geo_level = 'state' AND variable = 'B01003_001' AND estimate NOT BETWEEN 5900000 AND 6400000"
+  - name: counties_sum_to_state
+    sql: "SELECT 1 FROM (SELECT sum(estimate) FILTER (WHERE geo_level = 'county') c, max(estimate) FILTER (WHERE geo_level = 'state') s FROM {this} WHERE variable = 'B01003_001') WHERE c <> s"
+  - name: twenty_four_counties
+    sql: "SELECT n FROM (SELECT count(*) n FROM {this} WHERE geo_level = 'county' AND variable = 'B01003_001') WHERE n <> 24"

@@ -8,7 +8,7 @@ Maps the ACRS person injury status (KABCO scale) to the injury level used by NHT
 - **Source:** derived
 - **Depends on:** seed:ref_acrs_injury_to_mais.csv
 - **Card:** `catalog/datasets/ref/acrs_injury_to_mais.yml`
-- **Current build:** 20261014T193754Z · 5 rows · git 839fb53
+- **Current build:** 20261014T210200Z · 5 rows · git c2a0ea2
 - **Inputs:** {'datasets': {}, 'raw': {}}
 
 ## Columns

@@ -8,7 +8,7 @@ One row per Maryland county or county-equivalent. MDOT SHA and ACRS (MDSP crash 
 - **Source:** derived
 - **Depends on:** seed:ref_county_codes.csv
 - **Card:** `catalog/datasets/ref/county_codes.yml`
-- **Current build:** 20261014T193421Z · 24 rows · git 839fb53
+- **Current build:** 20261014T210156Z · 24 rows · git c2a0ea2
 - **Inputs:** {'datasets': {}, 'raw': {}}
 
 ## Columns

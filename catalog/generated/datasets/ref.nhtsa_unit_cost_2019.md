@@ -8,7 +8,7 @@ Per-person unit costs by injury level (MAIS0–MAIS5, Fatal) and per-damaged-veh
 - **Source:** derived
 - **Depends on:** seed:ref_nhtsa_unit_cost_2019.csv
 - **Card:** `catalog/datasets/ref/nhtsa_unit_cost_2019.yml`
-- **Current build:** 20261014T193754Z · 112 rows · git 839fb53
+- **Current build:** 20261014T210200Z · 112 rows · git c2a0ea2
 - **Inputs:** {'datasets': {}, 'raw': {}}
 
 ## Columns

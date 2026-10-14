@@ -8,7 +8,7 @@ CPI-U all-items index levels (1982-84=100), monthly and annual average, for the 
 - **Source:** bls
 - **Depends on:** raw:bls/cpi_u
 - **Card:** `catalog/datasets/econ/cpi_u.yml`
-- **Current build:** 20261014T193115Z · 1,631 rows · git 839fb53
+- **Current build:** 20261014T210200Z · 1,631 rows · git c2a0ea2
 - **Inputs:** {'datasets': {}, 'raw': {'bls/cpi_u': '20261014T1930Z'}}
 - **Coverage:** 1975-01-01 → 2026-09-01
 

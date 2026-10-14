@@ -249,7 +249,10 @@ def status() -> None:
         for key, sid in cur["inputs"].get("raw", {}).items():
             src, ent = key.split("/", 1)
             latest = latest_snapshot(src, ent)
-            if latest and latest["snapshot_id"] != sid:
+            used = sid if isinstance(sid, list) else [sid]  # multi-snapshot inputs record a list
+            if latest and latest["snapshot_id"] not in used and latest["retrieved_at"] > min(
+                    r["retrieved_at"] for r in manifest if r["snapshot_id"] in used and r["source_id"] == src
+                    and r["entity"] == ent):
                 stale.append(key)
         for dep, bid in cur["inputs"].get("datasets", {}).items():
             dc = current_build(dataset_cards()[dep])

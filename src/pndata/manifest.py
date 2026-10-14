@@ -61,6 +61,26 @@ def latest_snapshot(source_id: str, entity: str, period: str | None = None) -> d
     return max(rows, key=lambda r: r["retrieved_at"]) if rows else None
 
 
+PERIOD_PATTERNS = {"month": r"\d{4}-\d{2}", "half_year": r"\d{4}H[12]", "year": r"\d{4}"}
+
+
+def select_snapshots(source_id: str, entity: str, grain: str, periods: list[str] | None = None) -> list[dict]:
+    """The newest snapshot of each period of one grain (month, half_year or year), in period order.
+    Used when a dataset reads many period snapshots, e.g. MDSP months (current) or half-years (legacy)."""
+    import re
+    pat = re.compile(PERIOD_PATTERNS[grain])
+    best: dict[str, dict] = {}
+    for r in read_manifest():
+        per = r.get("period")
+        if r["source_id"] != source_id or r["entity"] != entity or not per or not pat.fullmatch(per):
+            continue
+        if periods and per not in periods:
+            continue
+        if per not in best or r["retrieved_at"] > best[per]["retrieved_at"]:
+            best[per] = r
+    return [best[k] for k in sorted(best)]
+
+
 def snapshot_dir(record: dict) -> Path:
     return data_root() / record["path"]
 

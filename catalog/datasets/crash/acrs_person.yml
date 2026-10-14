@@ -1,0 +1,41 @@
+id: crash.acrs_person
+title: People in Maryland crash reports (ACRS occupants and non-motorists), 2024 onward
+description: >
+  One row per person on an ACRS crash report: vehicle occupants (drivers and passengers) and non-motorists
+  (pedestrians, cyclists, …), newest monthly pull of each month. injury_code is the KABCO-based ACRS
+  injury status ('01' fatal … '05' no apparent injury); map to cost levels with ref.acrs_injury_to_mais.
+grain: one row per report × person
+primary_key: [report_number, person_id, person_role]
+layer: staging
+access_mode: mirror
+source: mdsp_acrs
+build: {python: "pipelines/crash/acrs.py:acrs_person"}
+depends_on: [raw:mdsp_acrs/occupants, raw:mdsp_acrs/nonmotorists, crash.acrs_report]
+parameters:
+  snapshot_grain: month
+license: {terms: "MDSP public dashboard data; no explicit license", redistribution: attribution, citation: "Maryland State Police, ACRS crash data (public dashboard), retrieved {retrieved_at}"}
+caveats:
+  - date: "2026-10-14"
+    text: "Some persons have no injury status (about 7% of occupants). The published cost model (method 2026.1) costs them at zero."
+  - date: "2026-10-14"
+    text: "age and sex are personal data (pii): aggregate only; never publish person-level rows. Name, address, zip, licence and test-result fields are not staged."
+columns:
+  - {name: report_number, type: varchar, description: "ACRS report number."}
+  - {name: person_id, type: varchar, description: "ACRS person GUID."}
+  - {name: person_role, type: varchar, description: "occupant or nonmotorist."}
+  - {name: person_type, type: varchar, description: "Occupant type (driver, passenger, …) or non-motorist type (pedestrian, cyclist, …)."}
+  - {name: vehicle_id, type: varchar, description: "Occupant's vehicle, or the vehicle that struck the non-motorist."}
+  - {name: injury_code, type: varchar, description: "ACRS injury status code '01'–'05'; null if not recorded."}
+  - {name: injury_status, type: varchar, description: "Injury status label."}
+  - {name: age, type: integer, description: "Age in years.", tags: [pii]}
+  - {name: sex, type: varchar, description: "Sex as recorded.", tags: [pii]}
+  - {name: restraint, type: varchar, description: "Restraint use (occupants)."}
+  - {name: seating_location, type: varchar, description: "Seating position (occupants) or location (non-motorists)."}
+  - {name: ejection, type: varchar, description: "Ejection (occupants)."}
+  - {name: source_period, type: varchar, description: "Snapshot period."}
+  - {name: source_snapshot_id, type: varchar, description: "Raw snapshot this row came from."}
+tests:
+  - {unique: [report_number, person_id, person_role]}
+  - {not_null: [report_number, person_id, person_role]}
+  - {accepted_values: {column: injury_code, values: ["01", "02", "03", "04", "05"]}}
+  - {relationships: {column: report_number, to: crash.acrs_report}, severity: warn}

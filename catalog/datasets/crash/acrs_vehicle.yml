@@ -1,0 +1,45 @@
+id: crash.acrs_vehicle
+title: Vehicles in Maryland crash reports (ACRS, MDSP), 2024 onward
+description: >
+  One row per vehicle (unit) on an ACRS crash report, newest monthly pull of each month. Join to
+  crash.acrs_report on report_number. VIN, plate-adjacent and carrier fields stay in raw only.
+grain: one row per report × vehicle
+primary_key: [report_number, vehicle_id]
+layer: staging
+access_mode: mirror
+source: mdsp_acrs
+build: {python: "pipelines/crash/acrs.py:acrs_vehicle"}
+depends_on: [raw:mdsp_acrs/vehicles, crash.acrs_report]
+parameters:
+  snapshot_grain: month
+license: {terms: "MDSP public dashboard data; no explicit license", redistribution: attribution, citation: "Maryland State Police, ACRS crash data (public dashboard), retrieved {retrieved_at}"}
+caveats:
+  - date: "2026-10-14"
+    text: "VIN Veh is deliberately not staged (it identifies a vehicle). It remains in raw for verified needs only."
+columns:
+  - {name: report_number, type: varchar, description: "ACRS report number."}
+  - {name: vehicle_id, type: varchar, description: "ACRS vehicle GUID."}
+  - {name: unit_number, type: integer, description: "Unit number on the report."}
+  - {name: body_type_code, type: varchar, description: "Body type code."}
+  - {name: body_type, type: varchar, description: "Body type."}
+  - {name: large_vehicle_body_type, type: varchar, description: "Large-vehicle body type, if any."}
+  - {name: make, type: varchar, description: "Make."}
+  - {name: model, type: varchar, description: "Model."}
+  - {name: model_year, type: integer, description: "Model year."}
+  - {name: movement, type: varchar, description: "Vehicle movement before crash."}
+  - {name: travel_direction, type: varchar, description: "Direction of travel."}
+  - {name: first_impact, type: varchar, description: "Point of first impact."}
+  - {name: most_harmful_event, type: varchar, description: "Most harmful event for this vehicle."}
+  - {name: damage_extent, type: varchar, description: "Extent of damage."}
+  - {name: special_function, type: varchar, description: "Special function (transit bus, police, …)."}
+  - {name: emergency_use, type: varchar, description: "Emergency use."}
+  - {name: speed_limit_mph, type: integer, description: "Posted speed limit (mph)."}
+  - {name: through_lanes, type: integer, description: "Number of through lanes."}
+  - {name: left_scene, type: varchar, description: "Hit-and-run / left scene flag as published."}
+  - {name: is_parked_raw, type: varchar, description: "Parked flag as published (not yet normalised)."}
+  - {name: source_period, type: varchar, description: "Snapshot period."}
+  - {name: source_snapshot_id, type: varchar, description: "Raw snapshot this row came from."}
+tests:
+  - {unique: [report_number, vehicle_id]}
+  - {not_null: [report_number, vehicle_id]}
+  - {relationships: {column: report_number, to: crash.acrs_report}, severity: warn}

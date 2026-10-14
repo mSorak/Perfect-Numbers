@@ -1,0 +1,75 @@
+id: crash.acrs_report
+title: Maryland crash reports (ACRS, MDSP), 2024 onward
+description: >
+  One row per police crash report in Maryland's Automated Crash Reporting System, as exported by MDSP's
+  public dashboard, with the newest monthly pull of each month. Persons: crash.acrs_person; vehicles:
+  crash.acrs_vehicle; costs: crash.report_cost. All 72 source columns remain in raw/mdsp_acrs; staging keeps
+  the ones analyses use.
+grain: one row per crash report
+primary_key: [report_number]
+layer: staging
+access_mode: mirror
+source: mdsp_acrs
+build: {python: "pipelines/crash/acrs.py:acrs_report"}
+depends_on: [raw:mdsp_acrs/reports, ref.county_codes]
+parameters:
+  snapshot_grain: month   # newest snapshot per YYYY-MM; 'half_year' reads the legacy 2024H1–2025H2 exports
+period: {field: crash_date, grain: day}
+license: {terms: "MDSP public dashboard data; no explicit license", redistribution: attribution, citation: "Maryland State Police, ACRS crash data (public dashboard), retrieved {retrieved_at}"}
+caveats:
+  - date: "2026-10-14"
+    text: "Reports are revised and occasionally withdrawn after approval. Counts for recent months grow for several months; each monthly refresh re-pulls the trailing 9 months."
+  - date: "2026-10-14"
+    text: "2024–2025 has 210,838 reports in the 2026-10 monthly pulls vs 210,860 in the legacy half-year exports used by the published crash-cost model (2026-03/06). Use snapshot_grain half_year only to reproduce that model."
+  - date: "2026-10-14"
+    text: "County is ACRS 'Crash County' (where the officer placed the crash), joined via ref.county_codes. A point-in-polygon county can differ near borders; see crash.report_cost for the spatial version once built."
+columns:
+  - {name: report_number, type: varchar, description: "ACRS report number, upper-case, trimmed."}
+  - {name: crash_date, type: date, description: "Crash date (Crashdate)."}
+  - {name: crash_year, type: bigint, description: "Calendar year of crash_date."}
+  - {name: crash_time, type: varchar, description: "Crash time HH:MM, local."}
+  - {name: crash_hour, type: integer, description: "Hour 0–23."}
+  - {name: day_of_week, type: varchar, description: "Day of week as published."}
+  - {name: county_geoid, type: varchar, description: "County FIPS via ref.county_codes."}
+  - {name: acrs_county_code, type: varchar, description: "ACRS county code ('01'–'24', alphabetical, not FIPS)."}
+  - {name: acrs_county_name, type: varchar, description: "ACRS county name."}
+  - {name: severity_code, type: integer, description: "1 fatal, 2 injury, 3 property damage only."}
+  - {name: severity, type: varchar, description: "Severity label."}
+  - {name: agency_code, type: varchar, description: "Reporting agency code."}
+  - {name: agency_name, type: varchar, description: "Reporting agency."}
+  - {name: road_name, type: varchar, description: "Road name."}
+  - {name: route_number, type: varchar, description: "Route number."}
+  - {name: route_type_code, type: varchar, description: "Route type code."}
+  - {name: route_type, type: varchar, description: "Route type (Interstate, US, Maryland, County, Municipality, …)."}
+  - {name: intersecting_road_name, type: varchar, description: "Cross street, if any."}
+  - {name: road_id, type: varchar, description: "Road ID as published."}
+  - {name: milepoint, type: double, description: "Milepoint distance."}
+  - {name: milepoint_direction, type: varchar, description: "Milepoint direction."}
+  - {name: functional_class_code, type: varchar, description: "Functional class code."}
+  - {name: functional_class, type: varchar, description: "Functional class."}
+  - {name: collision_type_code, type: varchar, description: "Collision impact code."}
+  - {name: collision_type, type: varchar, description: "Collision impact (rear end, angle, …)."}
+  - {name: first_harm_event_code, type: varchar, description: "First harmful event code."}
+  - {name: first_harm_event, type: varchar, description: "First harmful event."}
+  - {name: light, type: varchar, description: "Light condition."}
+  - {name: surface, type: varchar, description: "Road surface condition."}
+  - {name: junction, type: varchar, description: "Junction relation."}
+  - {name: is_impaired, type: boolean, description: "Impaired-driving crash flag."}
+  - {name: is_motorcycle, type: boolean, description: "Motorcycle involved."}
+  - {name: is_nonmotorist, type: boolean, description: "Pedestrian/cyclist/other non-motorist involved."}
+  - {name: is_large_vehicle, type: boolean, description: "Large vehicle involved."}
+  - {name: is_work_zone, type: boolean, description: "Work-zone related."}
+  - {name: has_unrestrained_occupant, type: boolean, description: "Any unrestrained occupant."}
+  - {name: latitude, type: double, description: "Latitude as published."}
+  - {name: longitude, type: double, description: "Longitude as published."}
+  - {name: geometry, type: geometry, description: "Crash point, OGC:CRS84; null if coordinates fall outside Maryland's bounding box."}
+  - {name: source_period, type: varchar, description: "Snapshot period (YYYY-MM, or YYYYH1/H2 for legacy)."}
+  - {name: source_snapshot_id, type: varchar, description: "Raw snapshot this row came from."}
+tests:
+  - {unique: report_number}
+  - {not_null: [report_number, crash_date, severity_code, county_geoid]}
+  - {accepted_values: {column: severity_code, values: [1, 2, 3]}}
+  - name: crash_date_within_source_period
+    sql: "SELECT report_number FROM {this} WHERE length(source_period) = 7 AND strftime(crash_date, '%Y-%m') <> source_period"
+  - name: monthly_report_count_band
+    sql: "SELECT m, n FROM (SELECT strftime(crash_date, '%Y-%m') m, count(*) n FROM {this} GROUP BY 1) WHERE n NOT BETWEEN 6000 AND 12000"

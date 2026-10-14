@@ -44,6 +44,16 @@ class BuildContext:
             self.raw_inputs[key] = rec
         return snapshot_dir(self.raw_inputs[key])
 
+    def raw_set(self, key: str, grain: str, periods: list[str] | None = None) -> list[Path]:
+        """Data files of the newest snapshot per period (see manifest.select_snapshots); `_` files excluded."""
+        from pndata.manifest import select_snapshots
+        source, entity = key.split("/", 1)
+        recs = select_snapshots(source, entity, grain, periods)
+        if not recs:
+            raise FileNotFoundError(f"no {grain} snapshots for {key}")
+        self.raw_inputs[key] = recs
+        return [snapshot_dir(r) / f["name"] for r in recs for f in r["files"] if not f["name"].startswith("_")]
+
     def seed(self, name: str) -> Path:
         return SEEDS_DIR / name
 
@@ -194,7 +204,8 @@ def build_one(dataset_id: str, log=print) -> dict:
         "dataset_id": dataset_id, "build_id": bid, "path": posix(out), "rows": rows,
         "status": "failed" if failed else "ok",
         "inputs": {"datasets": deps_used,
-                   "raw": {k: v["snapshot_id"] for k, v in ctx.raw_inputs.items()}},
+                   "raw": {k: ([r["snapshot_id"] for r in v] if isinstance(v, list) else v["snapshot_id"])
+                           for k, v in ctx.raw_inputs.items()}},
         "git_sha": git_sha(), "pn_version": __version__, "duckdb": duckdb.__version__,
         "tests": [r.__dict__ for r in results],
     }
