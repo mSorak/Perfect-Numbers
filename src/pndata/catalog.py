@@ -83,6 +83,8 @@ def write_docs() -> list[str]:
         page += ["", "## Columns", "", "| Column | Type | Description |", "|---|---|---|"]
         for c in card.get("columns", []):
             page.append(f"| `{c['name']}` | {c.get('type','')} | {c.get('description','')}{' **(pii)**' if c.get('pii') else ''} |")
+        if card.get("parameters"):
+            page += ["", "## Parameters", "", "```yaml", yaml.safe_dump(card["parameters"], sort_keys=False, allow_unicode=True).strip(), "```"]
         if card.get("caveats"):
             page += ["", "## Caveats", ""] + [f"- {c.get('date','') + ': ' if isinstance(c, dict) and c.get('date') else ''}{c['text'] if isinstance(c, dict) else c}" for c in card["caveats"]]
         if card.get("license"):

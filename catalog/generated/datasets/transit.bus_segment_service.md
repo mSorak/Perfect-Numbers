@@ -27,6 +27,20 @@ Scheduled bus passes on each Baltimore City street segment, for a representative
 | `n_routes` | bigint | Distinct GTFS routes passing in the band. |
 | `routes` | varchar[] | Route short names passing in the band. |
 
+## Parameters
+
+```yaml
+service_dates:
+  weekday: '2026-10-14'
+  saturday: '2026-10-17'
+  sunday: '2026-10-18'
+buffer_m: 10
+min_share: 0.6
+max_angle: 30
+time_bands: early 4–6, am_peak 6–9, midday 9–15, pm_peak 15–19, evening 19–24, night
+  24–28 (hours after service-day midnight)
+```
+
 ## Caveats
 
 - Pass times are interpolated linearly along each trip; on long routes the band assignment for a segment can be off by up to a band boundary.

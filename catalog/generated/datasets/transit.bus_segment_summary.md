@@ -40,6 +40,13 @@ One row per Baltimore City street segment with scheduled MTA local-bus service. 
 | `bike_facility_status` | varchar | Status of that bike facility. |
 | `geometry` | geometry | LineString, OGC:CRS84. |
 
+## Parameters
+
+```yaml
+stop_snap_m: 30
+ridership_months: 12
+```
+
 ## Caveats
 
 - 2026-10-14: controller comes from MDOT SHA's maintenance-responsibility layer. In Baltimore City that layer shows city maintenance for every road except MDTA toll facilities (I-95, I-395, I-895 and ramps) and federal/NPS roads; MDOT SHA maintains none (2026-10 snapshot). Some MTA routes do run on the MDTA interstates.
