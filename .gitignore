@@ -1,0 +1,62 @@
+# --- Data never lives in git (it lives in $PN_DATA_ROOT) ---
+*.csv
+*.tsv
+*.parquet
+*.geojson
+*.json.gz
+*.zip
+*.gz
+*.xlsx
+*.xls
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.sbn
+*.sbx
+*.atx
+*.gpkg
+*.pbf
+*.duckdb
+*.duckdb.wal
+*.wal
+*.pkl
+*.pdf
+*.gpx
+*.jpg
+*.jpeg
+*.png
+*.mov
+*.mp4
+*.exe
+
+# --- Allow-list: small, hand-maintained files that ARE code/docs ---
+!catalog/seeds/*.csv
+!catalog/manifests/*.jsonl
+!docs/design/*.csv
+!queries/examples/*.csv
+
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+*key*.txt
+
+# --- Environments and caches ---
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+desktop.ini

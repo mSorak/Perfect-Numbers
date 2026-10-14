@@ -1,0 +1,64 @@
+# ILLUSTRATIVE source cards — one per publisher/endpoint at data/catalog/sources/<source_id>.yml
+# (+ optional <source_id>.md for long recipes). Cadence lives ONLY here. Facts checked 2026-10-12 (see 02_source_landscape.md).
+
+- source_id: mdsp_acrs
+  publisher: Maryland Department of State Police
+  landing_page: https://mdsp.maryland.gov/safety-prevention/interactive-data-dashboards
+  platform: Tableau Server (analytics.mdsp.org, site "Public", guest access, export enabled)
+  access:
+    method: manual            # Phase 2: tableau_public connector, API route if the spike finds one, else Playwright
+    recipe: |
+      1. Open https://analytics.mdsp.org/t/Public/views/PublicCrash2/PublicCrash
+         ?Crash%20Date%20Begin=YYYY-MM-DD&Crash%20Date%20End=YYYY-MM-DD
+         Use MONTHLY windows. If "Data" stays greyed out under Download, shrink to weekly; this is
+         suspected to be a record-count limit (unconfirmed). Each batch covers the new months plus
+         re-pulls of earlier months still within the re-pull window.
+      2. Click the Crash Map sheet → toolbar "…" → Download → Data.
+      3. For EVERY tab (Reports, Vehicles, Occupants, NonMotorists, Contribs, Damage, Sequence,
+         NMSafetyEquip, and any others present) choose "Show all fields" → Download.
+         Matt's decision: all tables, all variables, because the data is hard to re-acquire.
+         Do all tabs in ONE sitting (mixing sessions caused issue #9).
+      4. Save into $PN_DATA_ROOT\inbox\mdsp_acrs\ and run: pn intake mdsp_acrs --period 2026H1
+    reconciliation_endpoint: >
+      https://analytics.mdsp.org/t/Public/views/PublicCrash2/PublicCrash.csv?Crash%20Date%20Begin={start}&Crash%20Date%20End={end}
+      (county × severity distinct-report counts; intake warns if totals differ by more than 0.5%)
+    auth: none
+  entities:
+    reports:      {header_signature: [Reportnumber, Crash Severity, Crashdate, LOD Crash Date, Latitude, Longitude], key: [Reportnumber]}
+    vehicles:     {header_signature: [ReportNumber Veh, VehicleID], key: [ReportNumber Veh, VehicleID]}
+    occupants:    {header_signature: [ReportNumber Occ, PersonID Occ], key: [ReportNumber Occ, PersonID Occ]}   # columns tagged pii in the card
+    nonmotorists: {header_signature: [ReportNumber NM, PersonID NM], key: [ReportNumber NM, PersonID NM]}       # columns tagged pii in the card
+  cadence:
+    upstream: daily
+    ours: semiannual (manual) → monthly (automated)
+    repull: "manual: new + previous half-year each batch; automated: trailing 9 months each refresh; a month freezes at 12 months old"
+  retention: keep all snapshots (small; needed for removal tracking)
+  hazards:
+    - Workbook has been renamed before (PublicCrash → PublicCrash2); the recipe breaks if the view changes.
+    - The Download → Data option is sometimes greyed out, possibly when a window has too many records (reported by Matt; unconfirmed). Use smaller windows.
+    - Data are revised and occasionally withdrawn after approval — every pull needs retrieved_at; see snapshot_selection in the card.
+    - 2019–2023 data live in a different workbook (PublicCrashData) with a different layout.
+  terms: "Provided as-is; MDSP makes no warranties. No explicit license; cite MDSP and retrieval date."
+  cross_checks: [moco_crash_socrata, baco_crashdata_arcgis, nhtsa_fars]
+  bulk_access_options: "MSP / MDOT Highway Safety Office or a Maryland Public Information Act request exist as options; not being pursued for now (Matt, 2026-10-13)."
+
+- source_id: mdot_sha_aadt
+  publisher: MDOT State Highway Administration
+  landing_page: https://data.imap.maryland.gov (search "AADT")
+  platform: ArcGIS Online FeatureServer (org njFNhDsUCentVYJW; item 77010abe7558425997b4fcdab02e2b64)
+  access:
+    method: arcgis
+    endpoint: https://services.arcgis.com/njFNhDsUCentVYJW/ArcGIS/rest/services/MDOT_SHA_Annual_Average_Daily_Traffic/FeatureServer
+    entities: {aadt_station: {layer: 0, approx_rows: 8189}, aadt_segment: {layer: 1, approx_rows: 10013}}
+    query: "where=1=1&outFields=*&outSR=4326&f=geojson&resultOffset={n}&resultRecordCount=2000"
+    change_detection: layer metadata dataLastEditDate
+    auth: none
+  cadence: {upstream: "annual (~August)", ours: "check monthly; snapshot when dataLastEditDate changes"}
+  retention: keep all snapshots
+  hazards:
+    - Unsuffixed AADT/AAWDT ("Current") changes meaning each release (2024 in the Feb/Jul-2026 pulls; ~2025 in Oct-2026). Staging assigns an explicit year (rule in proposal §7.2) and records the method.
+    - Oldest years roll off (AADT_2015 is now null) — keep every annual snapshot.
+    - Non-count years are factored estimates; COUNTED_FACTORED distinguishes them.
+    - Native SR is 3857 — always request outSR=4326.
+    - Avoid stale mirrors (iMAP MD_AnnualAverageDailyTraffic; Socrata qu2r-h2f9 etc.).
+  terms: "Public; cite MDOT SHA."

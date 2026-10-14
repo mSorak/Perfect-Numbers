@@ -1,0 +1,51 @@
+# ILLUSTRATIVE metric definitions. In the hub these become data/catalog/metrics.md (definitions + window rules)
+# and data/catalog/metrics.sql (DuckDB macros loaded by catalog.sql; Python's pndata.metrics calls the same SQL).
+# The "window" rule is what prevents the US-29 "per 100M VMT" class of error; the publish review checks labels.
+
+metrics:
+  - name: deaths_per_100m_vmt
+    formula: "100e6 * deaths / vmt"
+    inputs:
+      deaths: {unit: persons, window: "[start, end]"}
+      vmt: {unit: vehicle-miles, window: "same [start, end] — sum annual VMT over every year in the window"}
+    window_rule: numerator_and_denominator_same_period
+    label: "Deaths per 100 million vehicle-miles traveled ({start}–{end})"
+    worked_example: >
+      US-29 HoCo, Jan 2019–Jan 2026: 19 deaths / (455.05M VMT per year × ~7.08 years) × 100M ≈ 0.59.
+      The published chart showed 19 / 455.05 = 0.042 under this label.
+
+  - name: vmt
+    formula: "aadt * length_mi * days"
+    inputs: {aadt: {source: traffic.aadt_segment, year: explicit}, length_mi: {measured_in: "EPSG:26985"}, days: "365 or 366"}
+    label: "Vehicle-miles traveled, {year}"
+
+  - name: vmt_per_lane_mile
+    formula: "sum(aadt * length_mi) / sum(lanes * length_mi)"   # length-weighted; not a mean of segment ratios
+    label: "Daily vehicle-miles per lane-mile, {year}"
+
+  - name: rate_per
+    formula: "per * n / denom"
+    params: {per: [1000, 10000, 100000]}
+    window_rule: "if n spans k years and denom is a point-in-time population, label must say 'cumulative, k years' — or use annualized_rate"
+    label: "{what} per {per:,} residents ({window})"
+
+  - name: annualized_rate
+    formula: "per * (n / years) / denom"
+    label: "{what} per {per:,} residents per year (avg. {start}–{end})"
+
+  - name: to_real_dollars
+    formula: "amount * cpi(to_period) / cpi(from_period)"
+    inputs: {cpi: {source: econ.cpi_u, series: CUUR0000SA0, adjustment: NSA (never revised)}}
+    default_target: "annual average (BLS period M13) of the target year"
+    method_overrides: "a modelled dataset may pin other periods (crash.report_cost 2026.1 uses June 2019 → June 2025 for parity with the published post)"
+    label_suffix: "({to_period} dollars, CPI-U)"
+
+  - name: acs_sum_moe
+    formula: "sqrt(sum(moe^2))"
+    note: "Census ACS handbook approximation for aggregated counts."
+
+  - name: median_from_bins
+    note: "Interpolate over a distribution table (e.g. B25034 year built). Never population-weight tract medians."
+
+  - name: unemployment_rate_compare
+    rule: "All series in one chart share seasonal adjustment (all SA or all NSA); keep series_id in output."

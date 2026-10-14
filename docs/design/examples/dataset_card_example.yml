@@ -1,0 +1,112 @@
+# ILLUSTRATIVE dataset cards — "documentation as data".
+# One file per dataset at data/catalog/datasets/<domain>/<dataset>.yml (two shown here for brevity).
+# Cards are tool-neutral: `pn build` runs them today; a generator could emit dbt schema.yml from them later.
+# CATALOG.md, the per-dataset pages and the COMMENT ON statements in catalog.sql are GENERATED from these files.
+
+# ─────────────────────────────────────────────────────────────────────────────
+id: crash.acrs_report
+title: Maryland crash reports (ACRS), crash level
+description: >
+  Police-reported motor-vehicle crashes from the Maryland State Police ACRS system, one row per approved
+  crash report, built from dashboard exports. Reports are revised and occasionally withdrawn after
+  approval, so each crash period is taken from the most recent complete snapshot covering it.
+grain: one row per crash report
+primary_key: [report_number]
+access_mode: mirror                 # manual intake now; Playwright export later (02 §1)
+source: mdsp_acrs                   # → catalog/sources/mdsp_acrs.yml (cadence + recipe live there)
+build:
+  sql: pipelines/crash/acrs_report.sql
+  depends_on: [raw:mdsp_acrs/reports]
+snapshot_selection: >
+  For each crash period, use all entities from the most recent complete snapshot covering that period.
+  Reports absent from that snapshot are dropped and logged in crash.acrs_report_removed.
+  If a revised crash date moves a report between periods, dedupe on report_number, latest retrieval first.
+period: {field: date, grain: day}
+vintage: {field: source_snapshot_id, meaning: "retrieval that supplied the row"}
+coverage: generated                 # min/max date, rows, counties — filled by pn catalog
+geography: {extent: MD, level: point, crs: "OGC:CRS84", assigned_in: crash.report_geo}
+license:
+  terms: "MDSP dashboard data, provided as-is; no explicit license"
+  redistribution: attribution
+  citation: "Maryland State Police, Automated Crash Reporting System (ACRS) public dashboard, retrieved {retrieved_at}"
+caveats:
+  - date: 2026-06-03
+    text: "First H2-2025 Vehicles export was truncated (938 rows / 53,416 reports); replaced 2026-06-06. Guarded by test vehicles_per_report_by_period."
+  - date: 2026-10-12
+    text: "Legacy 2025-H2 batch mixes export sessions (Reports 2026-03-28, Vehicles 2026-06-06): 194 vehicle report numbers have no report. Waived for the parity build; superseded by a same-session re-export."
+  - text: "Only approved reports are included; recent months fill in over 2–6 months."
+columns:
+  - {name: report_number, type: varchar, description: "ACRS report number; universal crash key (also used by Montgomery and Baltimore County open data). Upper-cased, trimmed.", source_column: Reportnumber}
+  - {name: date, type: date, description: "Crash date (local, America/New_York).", source_column: Crashdate}
+  - {name: year, type: smallint, description: "Calendar year of the crash."}
+  - {name: hour, type: tinyint, description: "Crash hour 0–23.", source_column: Crashhour}
+  - {name: severity_code, type: tinyint, description: "1 fatal, 2 injury, 3 property damage only.", source_column: Crash Severity, codes: ref.acrs_severity}
+  - {name: county_name_reported, type: varchar, description: "County as written on the report. For analysis use crash.report_geo.county_geoid.", source_column: Crash County Description}
+  - {name: is_impaired, type: boolean, description: "Impairment flagged for any driver/non-motorist.", source_column: ImpairedCrash}
+  - {name: is_nonmotorist_crash, type: boolean, description: "A pedestrian, cyclist or other non-motorist was involved.", source_column: Non-Motorist Crash}
+  - {name: latitude, type: double, description: "WGS84 latitude as reported; 0/blank → NULL."}
+  - {name: longitude, type: double, description: "WGS84 longitude as reported; 0/blank → NULL."}
+  - {name: source_snapshot_id, type: varchar, description: "Raw snapshot that supplied this row (see catalog/manifests/raw_manifest.jsonl)."}
+  # … every remaining mart column documented (pn check errors on undocumented mart columns; warns for staging).
+tests:
+  - {unique: report_number}
+  - {not_null: [report_number, date, severity_code]}
+  - {accepted_values: {column: severity_code, values: [1, 2, 3]}}
+  - name: vehicles_per_report_by_period
+    sql: |
+      select period, n_vehicles::double / n_reports as ratio
+      from _int.acrs_period_counts
+      where n_vehicles::double / n_reports not between 1.5 and 2.5
+    expect: no_rows
+    severity: error
+  - name: reconciles_with_dashboard_counts
+    sql: "select * from _int.acrs_reconciliation where abs(delta_pct) > 0.5"
+    expect: no_rows
+    severity: warn
+example_queries: [queries/examples/crash_fatal_crashes_by_county_2025.sql]
+# used_by is generated from project.yml files — not written here.
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+id: crash.report_cost
+title: Estimated comprehensive cost per crash (method 2026.1)
+description: >
+  Estimated comprehensive (incl. quality-adjusted life years) and economic cost of each crash.
+  Injury/fatal crashes: persons by ACRS injury code × NHTSA 2019 unit cost (ref.acrs_injury_to_mais →
+  ref.nhtsa_unit_cost_2019, Table 1-10). Property-damage-only crashes: vehicles × PDO unit cost.
+  Converted to 2025 dollars with CPI-U (econ.cpi_u). Geography columns copied from crash.report_geo for convenience.
+grain: one row per crash report
+primary_key: [report_number]
+access_mode: derived
+build:
+  sql: pipelines/crash/report_cost.sql
+  depends_on: [crash.acrs_report, crash.acrs_person, crash.acrs_vehicle, crash.report_geo, ref.acrs_injury_to_mais, ref.nhtsa_unit_cost_2019, econ.cpi_u]
+method_version: "2026.1"
+parameters:
+  dollar_year: 2025
+  deflator: {series: CUUR0000SA0, from: "2019-06", to: "2025-06"}   # ≈1.259; parity run uses legacy_factor
+  legacy_factor: null              # set to 1.26 to reproduce crash_cost_eval.csv exactly
+  unit_cost_edition: "NHTSA DOT HS 813 403 (2019, revised 2023), Table 1-10"
+parity: "With legacy_factor 1.26: matches 2026/crash_costs/data/crash_cost_eval.csv within $1 per crash (210,860 rows; 2024 $41.04B, 2025 $37.34B)."
+caveats:
+  - text: "Unit costs are national averages; individual crashes can differ by multiples (NHTSA)."
+  - text: "Per-capita figures must state their window — use annualized_rate() for per-year values."
+columns:
+  - {name: report_number, type: varchar, description: "ACRS report number."}
+  - {name: date, type: date, description: "Crash date."}
+  - {name: year, type: smallint, description: "Crash year."}
+  - {name: severity_code, type: tinyint, description: "1 fatal, 2 injury, 3 PDO.", codes: ref.acrs_severity}
+  - {name: county_geoid, type: varchar, description: "5-digit county GEOID from point-in-polygon (geo.county, vintage 2024)."}
+  - {name: tract_geoid, type: varchar, description: "11-digit tract GEOID (vintage 2024)."}
+  - {name: place_geoid, type: varchar, description: "7-digit place GEOID; NULL outside any Census place."}
+  - {name: cost_total_usd2025, type: double, description: "Comprehensive cost (economic + QALY), 2025 dollars."}
+  - {name: cost_economic_usd2025, type: double, description: "Economic cost only (medical, EMS, productivity, insurance admin, workplace, legal, congestion, property damage), 2025 dollars."}
+  - {name: cost_qaly_usd2025, type: double, description: "Quality-adjusted life-year component, 2025 dollars."}
+  # … component columns (cost_medical_usd2025, …)
+tests:
+  - {unique: report_number}
+  - {relationships: {column: report_number, to: crash.acrs_report}}
+  - name: statewide_total_matches_published
+    sql: "select year, sum(cost_total_usd2025)/1e9 as b from crash.report_cost where year = 2025 group by 1 having abs(b - 37.34) > 0.05"
+    expect: no_rows
+    severity: warn              # anchor from post 9; informational after methodology changes

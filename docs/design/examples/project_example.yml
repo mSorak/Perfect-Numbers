@@ -1,0 +1,31 @@
+# ILLUSTRATIVE project manifest — lives at 2026/<project>/project.yml
+# The ONLY hand-written record of what a project reads from the hub (cards' used_by and pub.* are generated from it).
+# Globs are allowed. `pn pin` fills `pins`; `pn pack` freezes registered outputs for a post.
+
+project: crash_costs
+title: Maryland crash comprehensive costs (post + app)
+uses:
+  - crash.report_cost
+  - crash.report_geo
+  - crash.summary_*                 # county, place, tract, state
+  - geo.*_display
+  - census.acs5: {vintage: 2024, tables: [B01003, B08201]}
+params:
+  crash.report_cost.method_version: "2026.1"
+  dollar_year: 2025
+custom_areas:
+  # Caroline, Cecil, Dorchester, Kent, Queen Anne's, Somerset, Talbot, Wicomico, Worcester
+  - eastern_shore_9: {type: county_list, members: ["24011","24015","24019","24029","24035","24039","24041","24045","24047"]}
+pins:                               # written by `pn pin 2026/crash_costs`; absent while exploring (= float)
+  crash.report_cost: build=20261020T1412Z
+  crash.summary_county: build=20261020T1415Z
+outputs:
+  posts:
+    - slug: crashes-on-maryland-roadways-cost
+      date: 2026-06-13
+      registered_outputs: [statewide_totals_2025, county_per_capita_2024_25, tract_nonmotorist_share]   # via pn.publish(...)
+      charts: []                    # figures under blog/figures; no Datawrapper charts
+  apps:
+    - name: crash-cost-md
+      url: https://crash-cost-md.fly.dev
+      export: pn export app:crash-cost-md   # writes crash_cost_app/data_cache + meta.json (build ids)
