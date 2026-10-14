@@ -1,0 +1,9 @@
+project: baltimore_bus_lanes
+title: Baltimore street-design authority and bus-lane priority corridors
+uses:
+  - transit.bus_segment_summary
+  - transit.bus_segment_service
+  - traffic.road_jurisdiction
+  - transit.mta_ridership_route_month
+  - geo.county
+notes: Photos and drafts stay in the OneDrive archive folder (2026/balitmore_bus_lanes). Analysis notebooks go here.

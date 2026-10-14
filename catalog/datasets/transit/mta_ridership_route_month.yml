@@ -1,0 +1,68 @@
+id: transit.mta_ridership_route_month
+title: MTA ridership by route and month (CX dashboard)
+description: Monthly unlinked trips and average daily, weekday and weekend riders per route, from the MTA Customer
+  Experience dashboard data model.
+grain: one row per route × mode × month
+primary_key:
+- route_id
+- mode_id
+- month
+layer: staging
+access_mode: mirror
+source: mta_cx_powerbi
+build:
+  python: pipelines/transit/mta_build.py:ridership_route_month
+depends_on:
+- raw:mta_cx_powerbi/route_ridership
+- transit.mta_route
+period:
+  field: month
+  grain: month
+license:
+  terms: public dashboard
+  redistribution: attribution
+  citation: MDOT MTA Customer Experience Dashboard, retrieved {retrieved_at}
+caveats:
+- text: Counts unlinked trips. Metro and Light Rail counting methods changed in Nov 2023. Cross-check mode totals
+    against transit.ntd_monthly.
+- date: '2026-10-14'
+  text: About 40 routes retired in the 2017 BaltimoreLink redesign appear in ridership history but not in transit.mta_route;
+    the route-list check is therefore a warning, not an error.
+columns:
+- name: route_id
+  type: varchar
+  description: CX route ID (transit.mta_route). UNASSIGNED = ridership the dashboard does not attribute to a route
+    (kept so mode totals add up).
+- name: mode_id
+  type: bigint
+  description: CX mode ID.
+- name: month
+  type: date
+  description: First day of month.
+- name: riders
+  type: double
+  description: Total unlinked trips in the month.
+- name: average_daily_riders
+  type: double
+  description: Average daily riders.
+- name: average_weekday_riders
+  type: double
+  description: Average weekday riders.
+- name: average_saturday_riders
+  type: double
+  description: Average Saturday riders.
+- name: average_sunday_or_holiday_riders
+  type: double
+  description: Average Sunday/holiday riders.
+- name: source_snapshot_id
+  type: varchar
+  description: Raw snapshot id.
+tests:
+- unique:
+  - route_id
+  - mode_id
+  - month
+- relationships:
+    column: route_id
+    to: transit.mta_route
+  severity: warn

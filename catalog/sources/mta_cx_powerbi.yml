@@ -1,0 +1,27 @@
+source_id: mta_cx_powerbi
+publisher: Maryland Transit Administration (Customer Experience dashboard, public Power BI)
+landing_page: https://www.mta.maryland.gov/customer-experience-dashboard
+terms: "Public dashboard; cite MDOT MTA Customer Experience Dashboard and retrieval date."
+cadence: {upstream: monthly, ours: monthly}
+hazards:
+  - Undocumented endpoint reverse-engineered from the public embed; model id or cluster can change on republish.
+  - Ridership counts unlinked trips; Metro and Light Rail counting methods changed in Nov 2023.
+defaults: &pbi
+  connector: powerbi_public
+  resource_key: b87a7de7-5bad-45b7-b6e7-4e38440547aa
+  cluster: https://wabi-us-gov-virginia-api.analysis.usgovcloudapi.net
+  model_id: 1525527
+  view_url: https://app.powerbigov.us/view?r=eyJrIjoiYjg3YTdkZTctNWJhZC00NWI3LWI2ZTctNGUzODQ0MDU0N2FhIiwidCI6ImIzOGNkMjdjLTU3Y2EtNDU5Ny1iZTI4LTIyZGY0M2RkNDdmMSJ9
+entities:
+  dim_route:
+    <<: *pbi
+    entity: dim route
+    columns: [route_id, mode_id, route_short_name, route_long_name, route_type, route_id_gtfs, line_abbr_trapeze, location]
+  dim_mode:
+    <<: *pbi
+    entity: dim mode
+    columns: [mode_id, mode_name, cx_dashboard_mode_name, ntd_mode_code]
+  route_ridership:
+    <<: *pbi
+    entity: metric ridership
+    columns: [month_start, mode_id, route_id, riders, average_daily_riders, average_weekday_riders, average_saturday_riders, average_sunday_or_holiday_riders]

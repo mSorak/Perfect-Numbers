@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "pn-data": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-motherduck@1.1.0",
+        "--db-path", ":memory:",
+        "--init-sql", "${PN_DATA_ROOT:-C:/Users/Matt/pn-data}/catalog.sql",
+        "--max-rows", "1024",
+        "--query-timeout", "120"
+      ]
+    }
+  }
+}

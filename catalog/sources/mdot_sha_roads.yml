@@ -1,0 +1,14 @@
+source_id: mdot_sha_roads
+publisher: MDOT State Highway Administration
+landing_page: https://data.imap.maryland.gov (search "Roadway Maintenance Responsibility")
+terms: "Public; cite MDOT SHA."
+cadence: {upstream: "periodic", ours: "per project, or annually"}
+scope: Baltimore City and Baltimore County only (COUNTY 24 and 3 in MDOT county numbering)
+hazards:
+  - MDOT county codes are alphabetical (Baltimore City = 24, Baltimore County = 3), not FIPS.
+  - Field name is misspelled at source (MAINTENANCE_RESPONSIBLITY).
+entities:
+  maintenance_responsibility:
+    connector: arcgis
+    url: https://services.arcgis.com/njFNhDsUCentVYJW/arcgis/rest/services/MDOT_SHA_Roadway_Maintenance_Responsibility_view/FeatureServer/0
+    where: "COUNTY IN (3, 24)"

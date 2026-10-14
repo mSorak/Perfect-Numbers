@@ -1,0 +1,49 @@
+id: transit.gtfs_stop
+title: 'MTA local bus GTFS: stops'
+description: Bus stops with coordinates. stop_id matches Stop_ID in transit.stop_ridership.
+grain: one row per stop
+primary_key:
+- stop_id
+layer: staging
+access_mode: mirror
+source: mta_gtfs
+depends_on:
+- raw:mta_gtfs/local_bus
+license:
+  terms: Public GTFS feed
+  redistribution: attribution
+  citation: MDOT MTA local bus GTFS, feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:stop
+columns:
+- name: stop_id
+  type: varchar
+  description: GTFS stop ID.
+- name: stop_code
+  type: varchar
+  description: Public stop code.
+- name: stop_name
+  type: varchar
+  description: Stop name.
+- name: stop_lat
+  type: double
+  description: Latitude.
+- name: stop_lon
+  type: double
+  description: Longitude.
+- name: direction
+  type: varchar
+  description: Travel direction at stop (MTA extension).
+- name: position
+  type: varchar
+  description: Stop position (NS near side, FS far side, MB mid-block; MTA extension).
+- name: geometry
+  type: geometry
+  description: Point, OGC:CRS84.
+- name: feed_snapshot_id
+  type: varchar
+  description: Raw snapshot of the GTFS feed this row came from.
+tests:
+- unique: stop_id
+- not_null:
+  - geometry

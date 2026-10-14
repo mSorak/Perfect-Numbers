@@ -1,0 +1,42 @@
+id: transit.gtfs_route
+title: 'MTA local bus GTFS: routes'
+description: Routes in the MTA local bus GTFS feed. route_id joins to transit.mta_route.route_id_gtfs (CX dashboard
+  ridership).
+grain: one row per route
+primary_key:
+- route_id
+layer: staging
+access_mode: mirror
+source: mta_gtfs
+depends_on:
+- raw:mta_gtfs/local_bus
+license:
+  terms: Public GTFS feed
+  redistribution: attribution
+  citation: MDOT MTA local bus GTFS, feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:route
+columns:
+- name: route_id
+  type: varchar
+  description: GTFS route ID (numeric string, e.g. 11684).
+- name: route_short_name
+  type: varchar
+  description: Public route name (e.g. 103, CityLink BLUE).
+- name: route_long_name
+  type: varchar
+  description: Route description.
+- name: route_type
+  type: integer
+  description: GTFS route type (3 = bus).
+- name: route_color
+  type: varchar
+  description: Hex colour.
+- name: network_id
+  type: varchar
+  description: MTA network grouping (e.g. core).
+- name: feed_snapshot_id
+  type: varchar
+  description: Raw snapshot of the GTFS feed this row came from.
+tests:
+- unique: route_id

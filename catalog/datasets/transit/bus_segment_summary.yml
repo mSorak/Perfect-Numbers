@@ -1,0 +1,128 @@
+id: transit.bus_segment_summary
+title: Baltimore City bus corridors by street segment (weekday summary, for mapping)
+description: 'One row per Baltimore City street segment with scheduled MTA local-bus service. Combines weekday service
+  intensity (peak buses per hour in the busier direction, daily passes, routes), who controls the street, existing
+  bus lanes (OpenStreetMap) and bike facilities (BCDOT), stop activity, and a route-ridership exposure figure. Built
+  to rank candidate bus-lane corridors.
+
+  '
+grain: one row per street segment with weekday bus service
+primary_key:
+- segment_id
+layer: mart
+access_mode: derived
+build:
+  python: pipelines/transit/bus_segment_summary.py:build
+depends_on:
+- transit.bus_segment_service
+- traffic.street_segment
+- traffic.road_jurisdiction
+- traffic.bike_facility
+- transit.bus_lane_existing
+- transit.stop_ridership
+- transit.mta_ridership_route_month
+- transit.mta_route
+- transit.gtfs_route
+parameters:
+  stop_snap_m: 30
+  ridership_months: 12
+caveats:
+- date: '2026-10-14'
+  text: controller comes from MDOT SHA's maintenance-responsibility layer. In Baltimore City that layer shows city
+    maintenance for every road except MDTA toll facilities (I-95, I-395, I-895 and ramps) and federal/NPS roads;
+    MDOT SHA maintains none (2026-10 snapshot). Some MTA routes do run on the MDTA interstates.
+- text: stop_boardings is a seasonal average (Summer 2024 weekday at the 2026-10 pull) and counts all routes at
+    the stop. It measures activity AT the segment, not riders passing through it.
+- text: route_weekday_riders_exposure sums the average weekday riders of every route using the segment (last 12
+    months). It indicates how many riders' routes use the street, not the passenger load on the segment.
+- date: '2026-10-14'
+  text: 'Transit hubs produce very high counts on short access segments: the top segment (25 m of Liberty Heights
+    Ave at the Mondawmin Metro entrance, ~50 buses/hour) reflects ~10 routes converging on the station, not a corridor.
+    For corridor rankings, aggregate by street with length-weighting and exclude short hub-access segments (see
+    queries/examples/bus_corridor_ranking.sql).'
+- date: '2026-10-14'
+  text: has_bus_lane combines BCDOT's 'Shared Bus-Bike Lane' facilities (18.3 km) with OSM bus-lane tags; the two
+    sources only partly overlap (e.g. Lombard St is in BCDOT but not tagged in OSM). Neither is an official complete
+    bus-lane inventory.
+columns:
+- name: segment_id
+  type: bigint
+  description: traffic.street_segment.segment_id.
+- name: street_name
+  type: varchar
+  description: Street name.
+- name: sha_functional_class
+  type: varchar
+  description: SHA functional class where assigned.
+- name: sha_route_id
+  type: varchar
+  description: SHA route ID where on the state inventory.
+- name: length_m
+  type: double
+  description: Segment length in metres.
+- name: controller
+  type: varchar
+  description: 'Who maintains the street: Baltimore City, MDTA (state toll), Federal, or Other (from MDOT SHA maintenance
+    responsibility; streets not on that layer are city streets).'
+- name: on_sha_inventory
+  type: boolean
+  description: Segment matched a section of MDOT SHA's roadway inventory (which covers nearly every public road
+    in the city).
+- name: weekday_bus_passes
+  type: hugeint
+  description: Scheduled weekday bus passes, all bands and directions.
+- name: am_peak_buses_per_hour
+  type: double
+  description: Weekday 6–9am buses per hour, busier direction.
+- name: pm_peak_buses_per_hour
+  type: double
+  description: Weekday 3–7pm buses per hour, busier direction.
+- name: midday_buses_per_hour
+  type: double
+  description: Weekday 9am–3pm buses per hour, busier direction.
+- name: n_weekday_routes
+  type: bigint
+  description: Distinct weekday routes using the segment.
+- name: weekday_routes
+  type: varchar
+  description: Weekday route short names, comma-separated.
+- name: n_stops
+  type: bigint
+  description: Bus stops snapped to this segment (within 30 m).
+- name: stop_boardings
+  type: double
+  description: Average weekday boardings at those stops (seasonal; all routes).
+- name: stop_alightings
+  type: double
+  description: Average weekday alightings at those stops.
+- name: route_weekday_riders_exposure
+  type: double
+  description: Sum of average weekday riders of routes using the segment (see caveats).
+- name: has_bus_lane
+  type: boolean
+  description: A bus lane runs along the segment per BCDOT (Shared Bus-Bike Lane) or OpenStreetMap.
+- name: bus_lane_source
+  type: varchar
+  description: 'Which source flags the bus lane: BCDOT, OSM or BCDOT+OSM.'
+- name: has_bus_lane_osm
+  type: boolean
+  description: An OSM-tagged bus lane runs along the segment.
+- name: bus_lane_side_osm
+  type: varchar
+  description: Side of the tagged bus lane (right/left/both/lane tags).
+- name: bike_facility_type
+  type: varchar
+  description: BCDOT bike facility type along the segment, if any.
+- name: bike_facility_status
+  type: varchar
+  description: Status of that bike facility.
+- name: geometry
+  type: geometry
+  description: LineString, OGC:CRS84.
+tests:
+- unique: segment_id
+- not_null:
+  - controller
+  - geometry
+- row_count:
+    min: 1000

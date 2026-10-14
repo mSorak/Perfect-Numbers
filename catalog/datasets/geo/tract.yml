@@ -1,0 +1,33 @@
+id: geo.tract
+title: Maryland census tracts (TIGER/Line 2024)
+description: >
+  Analytical-grade (full-resolution) boundaries from the Census Bureau's TIGER/Line 2024 files. Polygons
+  include water; use aland_m2 for land area and density, never polygon area. Coordinates are NAD83,
+  stored as OGC:CRS84 (difference under 2 m).
+grain: one row per census tract (2020 definitions)
+primary_key: [geoid]
+layer: staging
+access_mode: mirror
+source: census_tiger
+build: {sql: pipelines/geo/tract.sql}
+depends_on: [raw:census_tiger/tract_md_2024]
+geography: {extent: MD, level: tract, crs: "OGC:CRS84", measure_crs: "EPSG:26985"}
+license: {terms: public domain, redistribution: allowed, citation: "U.S. Census Bureau, TIGER/Line Shapefiles 2024"}
+columns:
+  - {name: geoid, type: varchar, description: "Census GEOID (zero-padded text)."}
+  - {name: geoid_vintage, type: integer, description: "Boundary vintage year (2024)."}
+  - {name: county_geoid, type: varchar, description: "5-digit county GEOID."}
+  - {name: tractce, type: varchar, description: "6-digit tract code."}
+  - {name: name_full, type: varchar, description: "Legal/statistical area name, e.g. \"Baltimore city\"."}
+  - {name: aland_m2, type: bigint, description: "Land area, square metres (Census)."}
+  - {name: awater_m2, type: bigint, description: "Water area, square metres (Census)."}
+  - {name: geometry, type: geometry, description: "Polygon, OGC:CRS84."}
+tests:
+  - {unique: geoid}
+  - {not_null: [geoid, geometry]}
+  - {row_count: {min: 1400, max: 1550}}
+  - name: area_matches_census_land_plus_water
+    sql: |
+      SELECT geoid, ST_Area(ST_Transform(geometry, 'OGC:CRS84', 'EPSG:26985')) / (aland_m2 + awater_m2) AS ratio
+      FROM {this} WHERE aland_m2 + awater_m2 > 0
+        AND NOT ST_Area(ST_Transform(geometry, 'OGC:CRS84', 'EPSG:26985')) / (aland_m2 + awater_m2) BETWEEN 0.98 AND 1.02

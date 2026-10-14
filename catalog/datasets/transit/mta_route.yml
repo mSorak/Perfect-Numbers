@@ -1,0 +1,51 @@
+id: transit.mta_route
+title: MTA routes (CX dashboard dimension)
+description: Route list from the MTA Customer Experience dashboard data model, with the GTFS route ID used to join
+  ridership to schedules and shapes.
+grain: one row per CX route
+primary_key:
+- route_id
+layer: staging
+access_mode: mirror
+source: mta_cx_powerbi
+build:
+  python: pipelines/transit/mta_build.py:mta_route
+depends_on:
+- raw:mta_cx_powerbi/dim_route
+- raw:mta_cx_powerbi/dim_mode
+license:
+  terms: public dashboard
+  redistribution: attribution
+  citation: MDOT MTA Customer Experience Dashboard, retrieved {retrieved_at}
+caveats:
+- text: Undocumented Power BI endpoint; re-fetches may fail if MTA republishes the report.
+columns:
+- name: route_id
+  type: varchar
+  description: CX dashboard route ID (e.g. 103, BL for CityLink Blue).
+- name: route_short_name
+  type: varchar
+  description: Public route name.
+- name: route_long_name
+  type: varchar
+  description: Route description.
+- name: mode_id
+  type: bigint
+  description: CX mode ID.
+- name: mode_name
+  type: varchar
+  description: Mode name.
+- name: route_type
+  type: varchar
+  description: Route type as published.
+- name: route_id_gtfs
+  type: varchar
+  description: GTFS route_id (joins transit.gtfs_route).
+- name: line_abbr_trapeze
+  type: varchar
+  description: Scheduling-system line abbreviation.
+- name: location
+  type: varchar
+  description: Location label as published.
+tests:
+- unique: route_id

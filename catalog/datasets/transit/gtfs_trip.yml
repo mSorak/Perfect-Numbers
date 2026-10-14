@@ -1,0 +1,52 @@
+id: transit.gtfs_trip
+title: 'MTA local bus GTFS: trips'
+description: Scheduled trips with route, service calendar, direction and shape.
+grain: one row per scheduled trip
+primary_key:
+- trip_id
+layer: staging
+access_mode: mirror
+source: mta_gtfs
+depends_on:
+- raw:mta_gtfs/local_bus
+- transit.gtfs_route
+- transit.gtfs_shape
+license:
+  terms: Public GTFS feed
+  redistribution: attribution
+  citation: MDOT MTA local bus GTFS, feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:trip
+columns:
+- name: trip_id
+  type: varchar
+  description: GTFS trip ID.
+- name: route_id
+  type: varchar
+  description: GTFS route ID.
+- name: service_id
+  type: varchar
+  description: Service calendar ID (see transit.gtfs_service_date).
+- name: direction_id
+  type: integer
+  description: 0/1 direction.
+- name: shape_id
+  type: varchar
+  description: Shape followed (transit.gtfs_shape).
+- name: headsign
+  type: varchar
+  description: Destination sign.
+- name: block_id
+  type: varchar
+  description: Vehicle block.
+- name: feed_snapshot_id
+  type: varchar
+  description: Raw snapshot of the GTFS feed this row came from.
+tests:
+- unique: trip_id
+- relationships:
+    column: route_id
+    to: transit.gtfs_route
+- relationships:
+    column: shape_id
+    to: transit.gtfs_shape

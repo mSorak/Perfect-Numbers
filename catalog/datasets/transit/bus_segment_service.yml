@@ -1,0 +1,99 @@
+id: transit.bus_segment_service
+title: Scheduled MTA bus service on Baltimore City street segments, by time band
+description: 'Scheduled bus passes on each Baltimore City street segment, for a representative weekday, Saturday
+  and Sunday, split into time bands and by direction. Derived from MTA local-bus GTFS: each route shape is matched
+  to the segments it runs along (at least 60% of the segment within 10 m of the shape, and bearing within 30°, so
+  cross streets at intersections are excluded). Each trip''s time at a segment is interpolated between its first
+  departure and last arrival. "with"/"against" is relative to the segment''s digitized direction, a proxy for the
+  two travel directions.
+
+  '
+grain: one row per segment × day type × time band (bands with no service are absent)
+primary_key:
+- segment_id
+- day_type
+- time_band
+layer: mart
+access_mode: derived
+build:
+  python: pipelines/transit/bus_segment_service.py:build
+depends_on:
+- traffic.street_segment
+- transit.gtfs_shape
+- transit.gtfs_trip
+- transit.gtfs_stop_time
+- transit.gtfs_route
+- transit.gtfs_service_date
+parameters:
+  service_dates:
+    weekday: '2026-10-14'
+    saturday: '2026-10-17'
+    sunday: '2026-10-18'
+  buffer_m: 10
+  min_share: 0.6
+  max_angle: 30
+  time_bands: early 4–6, am_peak 6–9, midday 9–15, pm_peak 15–19, evening 19–24, night 24–28 (hours after service-day
+    midnight)
+caveats:
+- text: Pass times are interpolated linearly along each trip; on long routes the band assignment for a segment can
+    be off by up to a band boundary.
+- text: 'Local-bus feed only: commuter bus, Light Rail and Metro are not included.'
+- date: '2026-10-14'
+  text: 'Matcher QA (360 weekday shapes with >500 m in the city): matched segment length ÷ in-city shape length
+    has median 1.04 and 5th–95th percentile 0.96–1.25 at a 10 m buffer. The excess is mostly divided roads, where
+    both carriageways are credited with buses from both directions; per-segment intensity is unaffected but corridor
+    kilometres are slightly overstated. 14 shapes match under 90% of their in-city length (off-street terminals
+    and loops).'
+columns:
+- name: segment_id
+  type: bigint
+  description: traffic.street_segment.segment_id.
+- name: day_type
+  type: varchar
+  description: weekday, saturday or sunday (representative dates in parameters).
+- name: time_band
+  type: varchar
+  description: early, am_peak, midday, pm_peak, evening, night.
+- name: band_hours
+  type: integer
+  description: Length of the time band in hours.
+- name: n_bus_passes
+  type: bigint
+  description: Scheduled bus passes in the band, both directions.
+- name: n_passes_with
+  type: bigint
+  description: Passes travelling in the segment's digitized direction.
+- name: n_passes_against
+  type: bigint
+  description: Passes travelling against the segment's digitized direction.
+- name: buses_per_hour_max_direction
+  type: double
+  description: Buses per hour in the busier direction (the relevant figure for a directional bus lane).
+- name: buses_per_hour_both_directions
+  type: double
+  description: Buses per hour, both directions combined.
+- name: n_routes
+  type: bigint
+  description: Distinct GTFS routes passing in the band.
+- name: routes
+  type: varchar[]
+  description: Route short names passing in the band.
+tests:
+- unique:
+  - segment_id
+  - day_type
+  - time_band
+- accepted_values:
+    column: day_type
+    values:
+    - weekday
+    - saturday
+    - sunday
+- relationships:
+    column: segment_id
+    to: traffic.street_segment
+- name: buses_per_hour_plausible
+  sql: SELECT segment_id, time_band, buses_per_hour_max_direction FROM {this} WHERE buses_per_hour_max_direction
+    > 120
+- row_count:
+    min: 1000

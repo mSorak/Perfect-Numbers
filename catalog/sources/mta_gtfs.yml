@@ -1,0 +1,13 @@
+source_id: mta_gtfs
+publisher: Maryland Transit Administration (MDOT MTA)
+landing_page: https://www.mta.maryland.gov/developer-resources
+terms: "Public GTFS feeds; cite MDOT MTA and the feed date."
+cadence: {upstream: "irregular, with service changes; files overwritten in place", ours: "check weekly; snapshot on change"}
+hazards:
+  - Feed URLs redirect to S3 objects that are overwritten in place, so every change must be snapshotted.
+entities:
+  local_bus:
+    connector: http_file
+    url: https://feeds.mta.maryland.gov/gtfs/local-bus
+    filename: mdotmta_gtfs_localbus.zip
+    extract: true

@@ -1,0 +1,30 @@
+id: transit.gtfs_service_date
+title: 'MTA local bus GTFS: active service by date'
+description: Which service calendars run on each date, from calendar.txt with calendar_dates.txt exceptions applied
+  (e.g. Labor Day runs Sunday service).
+grain: one row per service date × service_id
+primary_key:
+- date
+- service_id
+layer: staging
+access_mode: mirror
+source: mta_gtfs
+depends_on:
+- raw:mta_gtfs/local_bus
+license:
+  terms: Public GTFS feed
+  redistribution: attribution
+  citation: MDOT MTA local bus GTFS, feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:service_date
+columns:
+- name: service_id
+  type: varchar
+  description: Service calendar ID.
+- name: date
+  type: date
+  description: Service date.
+tests:
+- unique:
+  - date
+  - service_id

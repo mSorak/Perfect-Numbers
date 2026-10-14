@@ -1,0 +1,91 @@
+id: traffic.street_segment
+title: Baltimore City street centerline segments
+description: 'Every street centerline segment in Baltimore City''s enterprise GIS (Street_Centerline_Native), including
+  alleys, ramps and expressways. The basis for joining bus service, jurisdiction and bike facilities to street segments.
+  Subtype codes are kept as published; see caveats for their provisional meanings.
+
+  '
+grain: one row per centerline segment
+primary_key:
+- segment_id
+layer: staging
+access_mode: mirror
+source: baltimore_streets
+build:
+  sql: pipelines/traffic/street_segment.sql
+depends_on:
+- raw:baltimore_streets/street_centerline
+geography:
+  extent: Baltimore City
+  level: line segment
+  crs: OGC:CRS84
+  measure_crs: EPSG:26985
+license:
+  terms: Baltimore City open data
+  redistribution: attribution
+  citation: Baltimore City Enterprise GIS, Street Centerline (Native), retrieved {retrieved_at}
+caveats:
+- date: '2026-10-14'
+  text: 'subtype_code meanings are inferred, not confirmed against the city''s schema data dictionary: STRPRD =
+    ordinary street segment, STRALY = alley, STREX = expressway, STRR = ramp, STRXO = crossover, STRTN = tunnel;
+    STRFIC, STRSPR and STRURD unknown. Confirm before publishing breakdowns by subtype.'
+- text: segment_id is the source OBJECTID, which can change between city exports. cline_id is the city's line ID
+    but has 8 duplicates or nulls in the 2026-10 export.
+- text: Travel-direction and speed-limit fields are essentially empty in the source and are not carried.
+- text: from_street and to_street are empty for 99.8% of segments in the source.
+columns:
+- name: segment_id
+  type: bigint
+  description: Source OBJECTID (unique within a snapshot).
+- name: cline_id
+  type: varchar
+  description: City centerline ID (not fully unique).
+- name: county_geoid
+  type: varchar
+  description: 24510 (Baltimore city).
+- name: street_name
+  type: varchar
+  description: Full street name assembled from prefix, name, type and suffix.
+- name: from_street
+  type: varchar
+  description: Cross street at the segment's start, as published.
+- name: to_street
+  type: varchar
+  description: Cross street at the segment's end, as published.
+- name: subtype_code
+  type: varchar
+  description: City segment subtype code (see caveats).
+- name: feature_status
+  type: varchar
+  description: Status code; A = active (99.6%).
+- name: sha_functional_class
+  type: varchar
+  description: 'SHA functional class where assigned: INT interstate, FWY freeway/expressway, PART principal arterial,
+    MART minor arterial, COLL collector, LOC local.'
+- name: sha_route_id
+  type: varchar
+  description: MDOT SHA route ID where the segment is on the state inventory.
+- name: sha_id_prefix
+  type: varchar
+  description: SHA route prefix (e.g. MD, US, IS, MU).
+- name: sha_route_number
+  type: varchar
+  description: SHA route number.
+- name: length_m
+  type: double
+  description: Segment length in metres (EPSG:26985).
+- name: source_edit_date
+  type: date
+  description: Last edit date in the city GIS.
+- name: geometry
+  type: geometry
+  description: LineString, OGC:CRS84.
+tests:
+- unique: segment_id
+- not_null:
+  - segment_id
+  - geometry
+- row_count:
+    min: 40000
+- name: total_length_plausible
+  sql: SELECT sum(length_m)/1000 AS km FROM {this} HAVING NOT sum(length_m)/1000 BETWEEN 2500 AND 6000

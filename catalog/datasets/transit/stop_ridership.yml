@@ -1,0 +1,61 @@
+id: transit.stop_ridership
+title: MTA bus stop boardings and alightings (seasonal average)
+description: Average weekday boardings and alightings per MTA bus stop, as published on Maryland iMAP. A seasonal
+  snapshot (Summer 2024 at the 2026-10 pull), summed across all routes serving the stop.
+grain: one row per bus stop
+primary_key:
+- stop_id
+layer: staging
+access_mode: mirror
+source: md_imap_transit
+build:
+  python: pipelines/transit/mta_build.py:stop_ridership
+depends_on:
+- raw:md_imap_transit/mta_bus_stops
+license:
+  terms: public
+  redistribution: attribution
+  citation: MDOT MTA via Maryland iMAP, MTA Bus Stops, retrieved {retrieved_at}
+caveats:
+- text: Seasonal average, not route-specific; the layer described Summer 2024 weekday ridership at the 2026-10 pull.
+columns:
+- name: stop_id
+  type: varchar
+  description: MTA stop ID (matches transit.gtfs_stop.stop_id).
+- name: stop_name
+  type: varchar
+  description: Stop name.
+- name: routes_served
+  type: varchar
+  description: Routes serving the stop, as published.
+- name: boardings
+  type: double
+  description: Average weekday boardings (season per caveats).
+- name: alightings
+  type: double
+  description: Average weekday alightings.
+- name: boardings_alightings
+  type: double
+  description: Boardings + alightings.
+- name: ridership_rank
+  type: integer
+  description: Rank by total activity.
+- name: shelter
+  type: varchar
+  description: Shelter present (as published).
+- name: county
+  type: varchar
+  description: County name as published.
+- name: mode
+  type: varchar
+  description: Mode.
+- name: source_snapshot_id
+  type: varchar
+  description: Raw snapshot id.
+- name: geometry
+  type: geometry
+  description: Point, OGC:CRS84.
+tests:
+- unique: stop_id
+- not_null:
+  - geometry

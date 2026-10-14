@@ -1,0 +1,68 @@
+id: transit.ntd_monthly
+title: NTD monthly ridership and service, Maryland agencies
+description: 'FTA National Transit Database complete monthly ridership (with adjustments and estimates) for Maryland
+  reporters: unlinked trips, revenue miles and hours, by agency × mode × type of service.'
+grain: one row per agency × mode × type of service × month
+primary_key:
+- ntd_id
+- mode
+- type_of_service
+- month
+layer: staging
+access_mode: mirror
+source: fta_ntd
+build:
+  python: pipelines/transit/mta_build.py:ntd_monthly
+depends_on:
+- raw:fta_ntd/monthly_ridership_md
+period:
+  field: month
+  grain: month
+license:
+  terms: public domain
+  redistribution: allowed
+  citation: FTA National Transit Database, Complete Monthly Ridership (8bui-9xvu), retrieved {retrieved_at}
+caveats: []
+columns:
+- name: ntd_id
+  type: varchar
+  description: NTD agency ID (MTA = 30034).
+- name: agency
+  type: varchar
+  description: Agency name.
+- name: mode
+  type: varchar
+  description: NTD mode code (MB bus, LR, HR, CR, CB, DR, …).
+- name: type_of_service
+  type: varchar
+  description: DO directly operated, PT purchased transportation.
+- name: mode_group
+  type: varchar
+  description: Bus / Rail / Other.
+- name: month
+  type: date
+  description: First day of month.
+- name: unlinked_trips
+  type: bigint
+  description: Unlinked passenger trips (UPT).
+- name: vehicle_revenue_miles
+  type: bigint
+  description: Vehicle revenue miles (VRM).
+- name: vehicle_revenue_hours
+  type: bigint
+  description: Vehicle revenue hours (VRH).
+- name: vehicles_operated_max
+  type: integer
+  description: Vehicles operated in maximum service (VOMS).
+- name: uza_name
+  type: varchar
+  description: Urbanized area.
+- name: state
+  type: varchar
+  description: State.
+tests:
+- unique:
+  - ntd_id
+  - mode
+  - type_of_service
+  - month

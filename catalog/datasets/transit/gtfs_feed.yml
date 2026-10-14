@@ -1,0 +1,37 @@
+id: transit.gtfs_feed
+title: 'MTA local bus GTFS: feed metadata'
+description: Feed version and validity dates of the MTA local bus GTFS snapshot in use.
+grain: one row per feed snapshot
+primary_key:
+- feed_version
+layer: staging
+access_mode: mirror
+source: mta_gtfs
+depends_on:
+- raw:mta_gtfs/local_bus
+license:
+  terms: Public GTFS feed
+  redistribution: attribution
+  citation: MDOT MTA local bus GTFS, feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:feed
+columns:
+- name: feed_version
+  type: varchar
+  description: Publisher feed version.
+- name: feed_start_date
+  type: date
+  description: First service date covered.
+- name: feed_end_date
+  type: date
+  description: Last service date covered.
+- name: publisher
+  type: varchar
+  description: Feed publisher.
+- name: feed_snapshot_id
+  type: varchar
+  description: Raw snapshot of the GTFS feed this row came from.
+tests:
+- row_count:
+    min: 1
+    max: 1

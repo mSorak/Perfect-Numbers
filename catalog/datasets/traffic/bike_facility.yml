@@ -1,0 +1,29 @@
+id: traffic.bike_facility
+title: Baltimore City bike facilities (BCDOT)
+description: Bike facilities mapped by Baltimore City DOT, with type, status and installation year.
+grain: one row per mapped facility segment
+primary_key: [facility_id]
+layer: staging
+access_mode: mirror
+source: baltimore_streets
+build: {sql: pipelines/traffic/bike_facility.sql}
+depends_on: [raw:baltimore_streets/bike_facilities]
+license: {terms: "Baltimore City open data", redistribution: attribution, citation: "Baltimore City DOT, Bike Facilities, retrieved {retrieved_at}"}
+columns:
+  - {name: facility_id, type: bigint, description: "Source OBJECTID."}
+  - {name: gis_id, type: varchar, description: "City GIS ID."}
+  - {name: street_name, type: varchar, description: "Street name."}
+  - {name: from_street, type: varchar, description: "From cross street."}
+  - {name: to_street, type: varchar, description: "To cross street."}
+  - {name: facility_type, type: varchar, description: "Primary facility type as published."}
+  - {name: status, type: varchar, description: "Status of the primary facility (existing, planned, …)."}
+  - {name: facility_type_2, type: varchar, description: "Secondary facility type."}
+  - {name: status_2, type: varchar, description: "Status of the secondary facility."}
+  - {name: oneway, type: varchar, description: "One-way flag as published."}
+  - {name: side, type: varchar, description: "Side of street."}
+  - {name: install_year, type: varchar, description: "Year installed, as published."}
+  - {name: owner, type: varchar, description: "Owner as published."}
+  - {name: length_m, type: double, description: "Length in metres (EPSG:26985)."}
+  - {name: geometry, type: geometry, description: "LineString, OGC:CRS84."}
+tests:
+  - {unique: facility_id}

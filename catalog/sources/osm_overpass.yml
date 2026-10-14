@@ -1,0 +1,13 @@
+source_id: osm_overpass
+publisher: OpenStreetMap contributors (via Overpass API)
+landing_page: https://www.openstreetmap.org
+terms: "ODbL 1.0: attribution required (\"© OpenStreetMap contributors\"); share-alike applies to derived databases."
+cadence: {upstream: continuous, ours: per project}
+hazards:
+  - Volunteer-mapped; completeness of bus-lane tagging in Baltimore is unknown. Verify against BCDOT/MTA lists before publishing.
+  - Overpass is rate-limited; keep queries small and bounded.
+entities:
+  baltimore_bus_lanes:
+    connector: http_file
+    filename: overpass.json
+    url: "https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A90%5D%3B%28way%5B%22highway%22%5D%5B~%22%5E%28busway%7Clanes%3Abus%7Cbus%3Alanes%29%22~%22.%22%5D%2839.197%2C-76.712%2C39.373%2C-76.529%29%3Bway%5B%22highway%22%3D%22busway%22%5D%2839.197%2C-76.712%2C39.373%2C-76.529%29%3B%29%3Bout%20geom%20tags%3B"

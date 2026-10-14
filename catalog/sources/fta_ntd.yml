@@ -1,0 +1,11 @@
+source_id: fta_ntd
+publisher: Federal Transit Administration, National Transit Database (data.transportation.gov)
+landing_page: https://data.transportation.gov/d/8bui-9xvu
+terms: "Public domain (US government)."
+cadence: {upstream: monthly (~2-month lag), ours: monthly}
+entities:
+  monthly_ridership_md:
+    connector: socrata
+    domain: data.transportation.gov
+    dataset: 8bui-9xvu
+    where: "state = 'MD'"

@@ -1,0 +1,32 @@
+id: transit.bus_lane_existing
+title: Existing bus lanes in Baltimore (OpenStreetMap)
+description: >
+  Street ways in Baltimore tagged with a bus lane or busway in OpenStreetMap, from a bounded Overpass query.
+  No official public bus-lane layer from BCDOT or MTA was found (2026-10). Completeness depends on volunteer
+  mapping, so verify against BCDOT/MTA materials before publishing totals.
+grain: one row per OSM way with bus-lane tags
+primary_key: [osm_way_id]
+layer: staging
+access_mode: mirror
+source: osm_overpass
+build: {python: "pipelines/transit/bus_lane_existing.py:build"}
+depends_on: ["raw:osm_overpass/baltimore_bus_lanes"]
+license: {terms: "ODbL 1.0", redistribution: "attribution + share-alike for derived databases", citation: "© OpenStreetMap contributors"}
+caveats:
+  - date: "2026-10-14"
+    text: "154 ways at first pull, concentrated on North Ave, Baltimore St, Pratt St, Fayette St and Gay St. Not verified against an official list."
+columns:
+  - {name: osm_way_id, type: bigint, description: "OpenStreetMap way ID."}
+  - {name: street_name, type: varchar, description: "OSM name tag."}
+  - {name: highway, type: varchar, description: "OSM highway class."}
+  - {name: bus_lane_side, type: varchar, description: "right, left, both, 'lane tags' (lanes:bus style tagging) or busway."}
+  - {name: busway_tag, type: varchar, description: "Value of the busway:* tag (usually 'lane')."}
+  - {name: lanes_bus, type: varchar, description: "Value of lanes:bus / bus:lanes if present."}
+  - {name: colour, type: varchar, description: "Lane colour if tagged (e.g. red)."}
+  - {name: start_date, type: varchar, description: "Installation date if tagged."}
+  - {name: oneway, type: varchar, description: "OSM oneway tag."}
+  - {name: source_snapshot_id, type: varchar, description: "Raw snapshot id."}
+  - {name: geometry, type: geometry, description: "LineString, OGC:CRS84."}
+tests:
+  - {unique: osm_way_id}
+  - {row_count: {min: 50}}

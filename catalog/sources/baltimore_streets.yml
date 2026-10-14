@@ -1,0 +1,12 @@
+source_id: baltimore_streets
+publisher: Baltimore City (Enterprise GIS)
+landing_page: https://data.baltimorecity.gov (search "Street Centerline")
+terms: "Public; cite Baltimore City."
+cadence: {upstream: "continuous edits", ours: "per project, or quarterly"}
+entities:
+  street_centerline:
+    connector: arcgis
+    url: https://baltegis.baltimorecity.gov/mapping/rest/services/Address_Points/Street_Centerline_Native/FeatureServer/0
+  bike_facilities:
+    connector: arcgis
+    url: https://services3.arcgis.com/ZTvQ9NuONePFYofE/arcgis/rest/services/BCDOT_Bike_Facilities_Open_/FeatureServer/18

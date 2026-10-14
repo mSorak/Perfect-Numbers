@@ -1,0 +1,37 @@
+id: traffic.road_jurisdiction
+title: Road maintenance responsibility (MDOT SHA), Baltimore City + County
+description: >
+  Which agency maintains each section of road on MDOT SHA's roadway inventory, for Baltimore City and
+  Baltimore County. Roads absent from this layer are local streets maintained by the city or county.
+grain: one row per inventory road section
+primary_key: [section_id]
+layer: staging
+access_mode: mirror
+source: mdot_sha_roads
+build: {sql: pipelines/traffic/road_jurisdiction.sql}
+depends_on: [raw:mdot_sha_roads/maintenance_responsibility]
+license: {terms: public, redistribution: attribution, citation: "MDOT SHA, Roadway Maintenance Responsibility, retrieved {retrieved_at}"}
+caveats:
+  - date: "2026-10-14"
+    text: "In the 2026-10 snapshot no Baltimore City section is maintained by MDOT SHA: inventory roads there are city-maintained, MDTA toll roads, or federal/NPS. Verify against MDOT SHA before stating as fact."
+columns:
+  - {name: section_id, type: varchar, description: "Source GlobalID."}
+  - {name: county_geoid, type: varchar, description: "24510 Baltimore city or 24005 Baltimore County."}
+  - {name: mdot_county_code, type: integer, description: "MDOT alphabetical county code (24 = Baltimore City, 3 = Baltimore County); not FIPS."}
+  - {name: road_name, type: varchar, description: "Road name as published."}
+  - {name: id_prefix, type: varchar, description: "Route prefix (IS, US, MD, MU, CO, …)."}
+  - {name: route_number, type: varchar, description: "Route number."}
+  - {name: route_id_rh, type: varchar, description: "SHA route ID."}
+  - {name: from_measure_mi, type: double, description: "Start milepoint."}
+  - {name: to_measure_mi, type: double, description: "End milepoint."}
+  - {name: govt_control_code, type: varchar, description: "HPMS ownership/control code."}
+  - {name: maintenance_responsibility, type: varchar, description: "Maintaining agency as published."}
+  - {name: maintainer_group, type: varchar, description: "Grouped: MDOT SHA, MDTA (state toll), County, City/municipal, Federal, Other."}
+  - {name: main_line, type: varchar, description: "Main line flag as published."}
+  - {name: municipality, type: varchar, description: "Municipality name if any."}
+  - {name: length_m, type: double, description: "Section length in metres (EPSG:26985)."}
+  - {name: geometry, type: geometry, description: "LineString/MultiLineString, OGC:CRS84."}
+tests:
+  - {unique: section_id}
+  - {not_null: [county_geoid, maintainer_group]}
+  - {accepted_values: {column: county_geoid, values: ["24510", "24005"]}}

@@ -1,0 +1,32 @@
+id: transit.gtfs_shape
+title: 'MTA local bus GTFS: shapes'
+description: Route paths as lines assembled from shapes.txt points in sequence.
+grain: one row per shape
+primary_key:
+- shape_id
+layer: staging
+access_mode: mirror
+source: mta_gtfs
+depends_on:
+- raw:mta_gtfs/local_bus
+license:
+  terms: Public GTFS feed
+  redistribution: attribution
+  citation: MDOT MTA local bus GTFS, feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:shape
+columns:
+- name: shape_id
+  type: varchar
+  description: GTFS shape ID.
+- name: geometry
+  type: geometry
+  description: LineString, OGC:CRS84.
+- name: n_points
+  type: bigint
+  description: Number of shape points.
+- name: feed_snapshot_id
+  type: varchar
+  description: Raw snapshot of the GTFS feed this row came from.
+tests:
+- unique: shape_id

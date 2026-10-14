@@ -1,0 +1,55 @@
+id: transit.gtfs_stop_time
+title: 'MTA local bus GTFS: stop times'
+description: Scheduled arrival and departure at each stop. Times are seconds after midnight of the service day (can
+  exceed 86,400).
+grain: one row per trip × stop visit
+primary_key:
+- trip_id
+- stop_sequence
+layer: staging
+access_mode: mirror
+source: mta_gtfs
+depends_on:
+- raw:mta_gtfs/local_bus
+- transit.gtfs_trip
+license:
+  terms: Public GTFS feed
+  redistribution: attribution
+  citation: MDOT MTA local bus GTFS, feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:stop_time
+columns:
+- name: trip_id
+  type: varchar
+  description: GTFS trip ID.
+- name: stop_id
+  type: varchar
+  description: GTFS stop ID.
+- name: stop_sequence
+  type: integer
+  description: Order of the stop within the trip.
+- name: arrival_s
+  type: integer
+  description: Scheduled arrival, seconds after service-day midnight.
+- name: departure_s
+  type: integer
+  description: Scheduled departure, seconds after service-day midnight.
+- name: shape_dist_traveled
+  type: double
+  description: Distance along shape (feed units, miles).
+- name: pickup_type
+  type: integer
+  description: 0 regular pickup.
+- name: drop_off_type
+  type: integer
+  description: 0 regular drop-off.
+- name: timepoint
+  type: integer
+  description: 1 = exact timepoint.
+tests:
+- unique:
+  - trip_id
+  - stop_sequence
+- relationships:
+    column: trip_id
+    to: transit.gtfs_trip

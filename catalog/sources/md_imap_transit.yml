@@ -1,0 +1,15 @@
+source_id: md_imap_transit
+publisher: Maryland iMAP / MDOT (MD_Transit FeatureServer)
+landing_page: https://mdgeodata.md.gov/imap/rest/services/Transportation/MD_Transit/FeatureServer
+terms: "Public; cite Maryland iMAP / MDOT MTA."
+cadence: {upstream: "seasonal (stop ridership is a periodic snapshot)", ours: "check quarterly"}
+hazards:
+  - The host moved from geodata.md.gov to mdgeodata.md.gov in 2026; the old host returns 503.
+  - Stop ridership is a seasonal average (Summer 2024 at last check), not route-specific.
+entities:
+  mta_bus_stops:
+    connector: arcgis
+    url: https://mdgeodata.md.gov/imap/rest/services/Transportation/MD_Transit/FeatureServer/9
+  mta_bus_lines:
+    connector: arcgis
+    url: https://mdgeodata.md.gov/imap/rest/services/Transportation/MD_Transit/FeatureServer/10

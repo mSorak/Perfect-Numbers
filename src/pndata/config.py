@@ -1,11 +1,20 @@
-"""Locations and secrets: the one place that knows where data and keys live."""
+"""Locations and secrets: the one place that knows where data, cards and keys live."""
 
 import os
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CATALOG_DIR = REPO_ROOT / "catalog"
+DATASETS_DIR = CATALOG_DIR / "datasets"
+SOURCES_DIR = CATALOG_DIR / "sources"
+SEEDS_DIR = CATALOG_DIR / "seeds"
+MANIFEST_FILE = CATALOG_DIR / "manifests" / "raw_manifest.jsonl"
+GENERATED_DIR = CATALOG_DIR / "generated"
+
 DEFAULT_DATA_ROOT = Path.home() / "pn-data"
 KEYS_FILE = Path.home() / ".config" / "pn" / ".env"
 DATA_ROOT_LAYERS = ("inbox", "raw", "cache/api", "docs", "packs", "staging", "marts", "tmp")
+USER_AGENT = "pndata/0.1 (Perfect Numbers data hub; https://github.com/mSorak/Perfect-Numbers)"
 
 
 def data_root() -> Path:
@@ -28,9 +37,9 @@ def load_keys(path: Path = KEYS_FILE) -> dict[str, str]:
     return keys
 
 
-def get_key(name: str) -> str:
+def get_key(name: str, required: bool = True) -> str | None:
     """Return a key from the environment or the keys file; never log the value."""
     value = os.environ.get(name) or load_keys().get(name)
-    if not value:
+    if not value and required:
         raise KeyError(f"{name} is not set; add it to {KEYS_FILE}")
     return value

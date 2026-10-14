@@ -4,7 +4,7 @@ The data hub behind [Perfect Numbers](https://perfectnumbers.substack.com/), a b
 
 This repo holds the **code, dataset catalog and documentation** for a local-first data pipeline: Maryland crash records and costs, traffic volumes, transit schedules and ridership, Census geography and tables, and more. Every dataset has a documented card, a stable name you can query, and a record of where each byte came from. The data itself lives outside git (see *Data root* below).
 
-> **Status:** Phase 0 (setup), October 2026. The design is in [`docs/design/`](docs/design/README.md). Start with [`03_proposal.md`](docs/design/03_proposal.md) §0.
+> **Status:** Phase 1, October 2026. The first slice covers Baltimore bus corridors: MTA GTFS, ridership, street centerlines, jurisdiction and bus/bike lanes. See [`catalog/generated/CATALOG.md`](catalog/generated/CATALOG.md). The design is in [`docs/design/`](docs/design/README.md). Start with [`03_proposal.md`](docs/design/03_proposal.md) §0.
 
 ## Layout
 
