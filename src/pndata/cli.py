@@ -78,6 +78,9 @@ def fetch(source_id: str, entity: list[str] = typer.Option(None, "--entity", "-e
     src = source_cards().get(source_id)
     if not src:
         raise typer.BadParameter(f"no source card {source_id!r}")
+    if "fetch" in src:  # batch source: all entities per period in one session, checked by pn intake
+        _fetch_batches(src, period)
+        return
     for name, ecfg in src["entities"].items():
         if entity and name not in entity:
             continue
@@ -99,6 +102,27 @@ def fetch(source_id: str, entity: list[str] = typer.Option(None, "--entity", "-e
             else:
                 rows = f", {rec['rows']:,} rows" if rec.get("rows") else ""
                 typer.echo(f"✓ {label}: snapshot {rec['snapshot_id']}{rows}")
+
+
+def _fetch_batches(src: dict, period: list[str] | None) -> None:
+    """Months from --period (2026-09 or 2024-01:2026-09), else the card's trailing `repull_months`.
+    A failing month is reported and the rest continue; the exit code is 1 if any failed."""
+    from pndata.intake import IntakeError, fetch_batch, month_range, trailing_months
+
+    months = ([m for p in period for m in month_range(p)] if period
+              else trailing_months(int(src["fetch"].get("repull_months", 9))))
+    failed = []
+    for m in months:
+        typer.echo(f"── {src['source_id']} {m}")
+        try:
+            recs = fetch_batch(src, m, log=lambda s: typer.echo(s) if not s.startswith("  ✓") else None)
+            if not recs:
+                typer.echo(f"= {m}: unchanged")
+        except (IntakeError, RuntimeError, OSError) as e:  # network, upstream shape, or a failed check
+            typer.echo(f"✗ {m}: {e}")
+            failed.append(m)
+    typer.echo(f"{len(months) - len(failed)} of {len(months)} months OK" + (f"; failed: {', '.join(failed)}" if failed else ""))
+    raise typer.Exit(code=1 if failed else 0)
 
 
 @app.command()

@@ -5,11 +5,13 @@ platform: Tableau Server (analytics.mdsp.org, site "Public", guest access, expor
 terms: "Provided as-is; MDSP makes no warranties. No explicit license; cite MDSP and the retrieval date."
 cadence:
   upstream: daily
-  ours: semiannual (manual) → monthly once the API-route spike or Playwright automation lands
-  repull: "manual: new + previous half-year each batch; automated: trailing 9 months each refresh; a month freezes at 12 months old"
+  ours: "monthly, on the 7th (Task Scheduler 'PN MDSP monthly' runs ops/mdsp_monthly.ps1 → pn fetch mdsp_acrs)"
+  repull: "each run re-pulls the trailing 9 complete months (fetch.repull_months); unchanged months add no snapshot; a month freezes at 12 months old"
 retention: keep all snapshots (small; needed for tracking revisions and withdrawn reports)
 recipe: |
-  Manual export until automation exists (Phase 2 item 3: API route first, Playwright fallback).
+  Automated: `pn fetch mdsp_acrs` (trailing 9 months) or `pn fetch mdsp_acrs -p 2024-01:2026-09`.
+  It uses the tableau_public connector (guest session, no browser; docs/design/05_mdsp_tableau_spike.md).
+  Manual fallback if the route breaks (and for anything the connector can't reach):
   1. Open https://analytics.mdsp.org/t/Public/views/PublicCrash2/PublicCrash
      ?Crash%20Date%20Begin=YYYY-MM-DD&Crash%20Date%20End=YYYY-MM-DD
      Use MONTHLY windows. If "Data" stays greyed out under Download, shrink to weekly (suspected
@@ -25,6 +27,9 @@ hazards:
   - Download → Data is sometimes greyed out, possibly when a window has too many records. Use smaller windows.
   - Data are revised and occasionally withdrawn after approval; every pull needs retrieved_at, and staging picks snapshots explicitly.
   - 2019–2023 data live in a different workbook (PublicCrashData) with a different layout.
+  - The tableau_public route uses undocumented vizql commands; a Tableau Server upgrade can break it (the run fails loudly). Fall back to the manual recipe and re-run the spike's probes.
+  - Snapshots come in two granularities: legacy half-years (2024H1–2025H2, manual) and months (YYYY-MM, tableau_public). Staging must pick, per month, the newest snapshot covering it.
+  - Sequence of Events has exact duplicate rows upstream (e.g. 143 in 2025-09); it has no key check.
   - Columns drift between exports (Vehicles 2025H2 has 69 columns, earlier halves 67). Staging selects by name.
   - Exports are UTF-8 with a byte-order mark; dates are M/D/YYYY.
 cross_checks: [moco_crash_socrata, baco_crashdata_arcgis, nhtsa_fars]
@@ -54,12 +59,47 @@ entities:
     key: [ReportNumber NM, PersonID NM]
     parent: {entity: reports, key: ReportNumber NM, parent_key: Reportnumber, max_orphan_pct: 0.05}
     pii: true
-  # Tabs not in the legacy 2024–2025 files; required: false until the first all-tabs export
-  # confirms their headers (then add header_signature/key and drop `required: false`).
-  contribs:      {connector: manual, required: false}
-  damage:        {connector: manual, required: false}
-  sequence:      {connector: manual, required: false}
-  nmsafetyequip: {connector: manual, required: false}
+  # Tabs not in the legacy 2024–2025 UI exports (required: false so legacy half-year intakes still pass);
+  # every tableau_public batch includes them.
+  contribs:
+    connector: manual
+    required: false
+    header_signature: [ReportNumber Contribs, Contribs Code]
+    # no key: (report, person, vehicle, code) repeats upstream (14,621 rows, 14,582 distinct in 2025-09)
+    parent: {entity: reports, key: ReportNumber Contribs, parent_key: Reportnumber, max_orphan_pct: 0.05}
+  damage:
+    connector: manual
+    required: false
+    header_signature: [VehicleID Damage, DamageLocation Veh]
+    key: [VehicleID Damage, DamageLocation Veh]
+    parent: {entity: vehicles, key: VehicleID Damage, parent_key: VehicleID, max_orphan_pct: 0.05}
+  sequence:
+    connector: manual
+    required: false
+    header_signature: [VehicleID Sequence, SequenceOrder Veh]
+    # no key: exact duplicate rows upstream (143 in 2025-09)
+    parent: {entity: vehicles, key: VehicleID Sequence, parent_key: VehicleID, max_orphan_pct: 0.05}
+  nmsafetyequip:
+    connector: manual
+    required: false
+    header_signature: [PersonID NMSafetyEquip, SafetyEquipmentCode NM]
+    key: [PersonID NMSafetyEquip, SafetyEquipmentCode NM]
+    parent: {entity: nonmotorists, key: PersonID NMSafetyEquip, parent_key: PersonID NM, max_orphan_pct: 0.05}
+
+fetch:
+  connector: tableau_public
+  host: https://analytics.mdsp.org
+  site: Public
+  workbook: PublicCrash2
+  view: PublicCrash
+  worksheet: Crash Map
+  params: {begin: "[Parameters].[Parameter 1]", end: "[Parameters].[Parameter 2]"}
+  url_params: {begin: Crash Date Begin, end: Crash Date End}
+  tables: {reports: Reports, vehicles: Vehicles, occupants: Occupants, nonmotorists: NonMotorists,
+           contribs: Contributing Circumstances, damage: Vehicle Areas Damaged,
+           sequence: Vehicle Sequence Of Events, nmsafetyequip: NonMotorist SafetyEquipment}
+  repull_months: 9
+  earliest: "2024-01"    # PublicCrash2 serves crashes from 2024-01-01; 2019–2023 are in PublicCrashData
 
 intake:
   same_session_hours: 12        # all tabs of one batch must come from one export sitting

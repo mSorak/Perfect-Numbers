@@ -120,3 +120,40 @@ def test_explicit_entity_for_non_csv(root):
     assert recs[0]["entity"] == "bundle" and recs[0]["intake_checks"]["file"]["status"] == "pass"
     with pytest.raises(ValueError, match="--entity"):
         intake(src, "2021", [z, z], copy=True, entity="bundle", reconcile=False, log=lambda *_: None)
+
+
+def test_month_helpers():
+    from pndata.intake import month_range, trailing_months
+    assert month_range("2025-11:2026-02") == ["2025-11", "2025-12", "2026-01", "2026-02"]
+    assert month_range("2026-09") == ["2026-09"]
+    assert trailing_months(9, date(2026, 11, 7)) == month_range("2026-02:2026-10")
+    assert trailing_months(1, date(2026, 1, 7)) == ["2025-12"]
+
+
+def test_expected_entity_must_match_header(root):
+    r, v = batch(root)
+    with pytest.raises(RuntimeError, match="connector says vehicles"):
+        intake(SOURCE, "2025H1", [r, v], copy=True, reconcile=False,
+               expected={r.name: "vehicles"}, log=lambda *_: None)
+
+
+def test_reordered_rows_are_not_a_new_snapshot(root):
+    r, v = batch(root)
+    intake(SOURCE, "2025H1", [r, v], copy=True, reconcile=False, log=lambda *_: None)
+    r2 = write(root / "Reports_b.csv", "Reportnumber,Crashdate\nA2,6/30/2025\nA1,3/18/2025\n", None)
+    v2 = write(root / "Vehicles_b.csv", "VehicleID,ReportNumber Veh\nv3,A2\nv1,A1\nv2,A1\n", None)
+    assert intake(SOURCE, "2025H1", [r2, v2], copy=True, reconcile=False, log=lambda *_: None) == []
+    r3 = write(root / "Reports_c.csv", "Reportnumber,Crashdate\nA2,6/29/2025\nA1,3/18/2025\n", None)
+    recs = intake(SOURCE, "2025H1", [r3, v2], copy=True, reconcile=False, log=lambda *_: None)
+    assert [x["entity"] for x in recs] == ["reports"]  # a real change is committed
+
+
+def test_exact_duplicate_rows_warn_but_conflicts_fail(root):
+    r, v = batch(root, veh_extra="A2,v3\n")  # exact repeat of a row
+    recs = intake(SOURCE, "2025H1", [r, v], copy=True, reconcile=False, log=lambda *_: None)
+    veh = next(x for x in recs if x["entity"] == "vehicles")
+    assert veh["intake_checks"]["key_unique"]["status"] == "warn"
+    assert veh["intake_checks"]["key_unique"]["value"]["exact_duplicate_rows"] == 1
+    bad = write(root / "Reports_x.csv", "Reportnumber,Crashdate\nA1,3/18/2025\nA1,3/19/2025\nA2,6/30/2025\n")
+    with pytest.raises(IntakeError, match="reports.key_unique"):  # same key, different date: conflict
+        intake(SOURCE, "2025H1", [bad, v], copy=True, reconcile=False, log=lambda *_: None)

@@ -105,10 +105,13 @@ def intake(source: dict, period: str, files: list[Path] | None = None, copy: boo
            retrieved_at: datetime | None = None, retrieved_at_method: str | None = None,
            ui: str | None = None, waivers: list[str] | None = None, waiver_note: str | None = None,
            reconcile: bool = True, dry_run: bool = False, entity: str | None = None,
+           expected: dict[str, str] | None = None, extra_meta: dict | None = None,
            log=print) -> list[dict]:
     """Check and commit one batch. Returns the manifest records (empty on dry run or if all unchanged).
 
-    `entity` skips header detection (one file only); non-CSV files get only the batch-level checks."""
+    `entity` skips header detection (one file only); non-CSV files get only the batch-level checks.
+    `expected` (file name → entity, from a connector) must agree with header detection.
+    `extra_meta` is merged into every manifest record (e.g. connector session info)."""
     source_id = source["source_id"]
     entities = source["entities"]
     cfg = source.get("intake", {})
@@ -136,6 +139,8 @@ def intake(source: dict, period: str, files: list[Path] | None = None, copy: boo
             if ent is None:
                 raise RuntimeError(f"{f.name}: header matches no entity of {source_id}; check the export "
                                    f"or add a header_signature to the source card")
+            if expected and expected.get(f.name) not in (None, ent):
+                raise RuntimeError(f"{f.name}: connector says {expected[f.name]}, header says {ent}")
             if ent in items:
                 raise RuntimeError(f"{f.name} and {items[ent].src.name} are both {ent}")
             work = stage / ent
@@ -183,11 +188,15 @@ def intake(source: dict, period: str, files: list[Path] | None = None, copy: boo
                 "session_id": session_id,
                 "intake_checks": {**{c.name: c.record() for c in it.checks}, **batch_checks},
                 **it.extra,
+                **(extra_meta or {}),
             }
             if waivers:
                 meta["waivers"] = [{"code": w, "note": waiver_note} for w in waivers]
             elif waiver_note:
                 meta["note"] = waiver_note
+            if _same_content(source_id, ent, period, it):
+                log(f"= {source_id}/{ent} {period}: same rows as the existing snapshot (row order differs)")
+                continue
             rec = commit_snapshot(it.work.parent, source_id, ent, meta, period=period,
                                   retrieved_at=it.retrieved_at)
             if rec is None:
@@ -207,6 +216,29 @@ class IntakeError(RuntimeError):
     pass
 
 
+def _same_content(source_id: str, entity: str, period: str, it: Item) -> bool:
+    """True if the latest snapshot of this period has the same columns and the same rows (as a multiset).
+    Some exports (Tableau) reorder rows between identical pulls; that must not create a new snapshot."""
+    from pndata.manifest import latest_snapshot, snapshot_dir
+    prev = latest_snapshot(source_id, entity, period)
+    if prev is None or it.work.suffix.lower() != ".csv":
+        return False
+    old = [f for f in prev["files"] if not Path(f["name"]).name.startswith("_")]
+    if len(old) != 1 or not old[0]["name"].lower().endswith(".csv"):
+        return False
+    old_path = snapshot_dir(prev) / old[0]["name"]
+    if old[0]["sha256"] == sha256_file(it.work):
+        return False  # byte-identical: commit_snapshot skips it and says so
+    if sorted(read_header(old_path)) != sorted(it.columns):
+        return False
+    a, b = _rel(old_path), _rel(it.work)
+    cols = ", ".join(_q(c) for c in sorted(it.columns))
+    con = duckdb.connect()
+    diff = con.execute(f"SELECT (SELECT count(*) FROM (SELECT {cols} FROM {a} EXCEPT ALL SELECT {cols} FROM {b})) + "
+                       f"(SELECT count(*) FROM (SELECT {cols} FROM {b} EXCEPT ALL SELECT {cols} FROM {a}))").fetchone()[0]
+    return diff == 0
+
+
 def _run_checks(source: dict, items: dict[str, Item], start: date, end: date, missing: list[str],
                 cfg: dict) -> list[Check]:
     entities = source["entities"]
@@ -222,14 +254,19 @@ def _run_checks(source: dict, items: dict[str, Item], start: date, end: date, mi
         it.checks.append(Check("header_signature", "pass", f"{len(it.columns)} columns"))
         it.checks.append(Check("rows", "pass" if it.rows else "fail", f"{it.rows:,}", it.rows))
         if key := ecfg.get("key"):
-            cols = ", ".join(_q(c) for c in key)
-            n_null, n_dup = con.execute(
-                f"SELECT (SELECT count(*) FROM {_q(entity)} WHERE " + " OR ".join(f"{_q(c)} IS NULL" for c in key)
-                + f"), (SELECT count(*) FROM (SELECT {cols} FROM {_q(entity)} GROUP BY ALL HAVING count(*) > 1))"
+            # Exact duplicate rows (the same record exported twice upstream) are a warning; a key whose rows
+            # disagree, or a null key, is an error.
+            cols, t = ", ".join(_q(c) for c in key), _q(entity)
+            n_null, n_exact, n_conflict = con.execute(
+                f"SELECT (SELECT count(*) FROM {t} WHERE " + " OR ".join(f"{_q(c)} IS NULL" for c in key) + "), "
+                f"(SELECT count(*) FROM {t}) - (SELECT count(*) FROM (SELECT DISTINCT * FROM {t})), "
+                f"(SELECT count(*) FROM (SELECT {cols} FROM (SELECT DISTINCT * FROM {t}) GROUP BY ALL HAVING count(*) > 1))"
             ).fetchone()
-            ok = not n_null and not n_dup
-            it.checks.append(Check("key_unique", "pass" if ok else "fail",
-                                   f"{'+'.join(key)}: {n_null} null, {n_dup} duplicated", n_dup + n_null))
+            status = "fail" if n_null or n_conflict else "warn" if n_exact else "pass"
+            it.checks.append(Check("key_unique", status,
+                                   f"{'+'.join(key)}: {n_null} null, {n_conflict} conflicting, "
+                                   f"{n_exact} exact duplicate rows",
+                                   {"null": n_null, "conflicting": n_conflict, "exact_duplicate_rows": n_exact}))
         if dc := ecfg.get("date_column"):
             fmt = ecfg.get("date_format", "%Y-%m-%d")
             lo, hi, bad = con.execute(
@@ -325,3 +362,49 @@ def _reconcile(rc: dict, items: dict[str, Item], start: date, end: date, log) ->
                            {"file": t_ours, "endpoint": t_theirs, "diff_pct": diff_pct,
                             "largest_group_diffs": [{"group": list(g), "diff": d} for g, d in worst if d]}))
     it.extra["reconciliation_url"] = url
+
+
+# ---------- connector-driven batches (e.g. MDSP via tableau_public) ----------
+
+def month_range(spec: str) -> list[str]:
+    """'2026-09' → ['2026-09']; '2024-01:2026-09' → every month in between, inclusive."""
+    lo, _, hi = spec.partition(":")
+    hi = hi or lo
+    (y, m), (y1, m1) = (map(int, lo.split("-")), map(int, hi.split("-")))
+    out = []
+    while (y, m) <= (y1, m1):
+        out.append(f"{y}-{m:02d}")
+        y, m = (y + (m == 12), m % 12 + 1)
+    return out
+
+
+def trailing_months(n: int, today: date | None = None) -> list[str]:
+    """The last n complete calendar months before `today`."""
+    d = (today or date.today()).replace(day=1)
+    out = []
+    for _ in range(n):
+        d = (d - timedelta(days=1)).replace(day=1)
+        out.append(f"{d:%Y-%m}")
+    return sorted(out)
+
+
+def fetch_batch(source: dict, period: str, log=print) -> list[dict]:
+    """Run the source's batch connector for one period into tmp/, then check and commit via intake()."""
+    from pndata.connectors import BATCH_CONNECTORS
+    cfg = source["fetch"]
+    start, end = parse_period(period)
+    work = data_root() / "tmp" / f"fetch_{source['source_id']}_{period}_{datetime.now(timezone.utc):%Y%m%dT%H%M%S}"
+    work.mkdir(parents=True)
+    try:
+        when = datetime.now(timezone.utc)
+        meta = BATCH_CONNECTORS[cfg["connector"]]({**cfg, "start": start.isoformat(), "end": end.isoformat()}, work)
+        if meta.get("unexpected_tables"):
+            log(f"  ! upstream has tables the card doesn't list: {meta['unexpected_tables']}")
+        expected = {t["file"]: ent for ent, t in meta["tables"].items()}
+        files = [work / name for name in expected]
+        return intake(source, period, files, copy=False, retrieved_at=when,
+                      retrieved_at_method=f"{cfg['connector']} export (time the session started)",
+                      expected=expected, extra_meta={k: meta[k] for k in ("method", "request", "session", "tables")},
+                      log=log)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)

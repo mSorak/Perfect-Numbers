@@ -37,6 +37,28 @@ Plan: `03_proposal.md` §10, "Phase 2". The work items, in order:
   - The concatenated `*_maryland_2024_2025.csv` files cover all of them, so the legacy cost analysis is unaffected.
 - **Next:** item 4 (staging cards). Read the half-years from the manifest by `period`, not by file name. Globs over a snapshot folder must skip `_`-prefixed files (e.g. `Reports_*.csv`, not `*.csv`; the reports folder holds `_reconciliation.csv`).
 
+**MDSP automation (2026-10-14, third pass): item 2 is done.**
+- The spike (`docs/design/05_mdsp_tableau_spike.md`) found an API route. The `tableau_public` connector (`src/pndata/connectors/tableau_public.py`) pulls all 8 ACRS tables per month from one guest session, with all fields and no row cap, about 60 s per month.
+- `pn fetch mdsp_acrs` (the card's `fetch:` block) runs the connector, then the `pn intake` checks, for each month:
+  - the connector's entity must match the header signature;
+  - keys, orphans for all 7 child tables, dates in the month, and an exact reconciliation.
+
+  `-p 2026-09` or `-p 2024-01:2026-09` picks months. With no `-p`, it re-pulls the trailing 9 complete months.
+- **Re-pulls don't duplicate.** Tableau sometimes reorders rows between identical exports, so intake compares a re-pulled CSV's rows as a multiset against the latest snapshot of that period. Only real revisions add snapshots.
+  - Two redundant 2025-09 snapshots (vehicles and occupants, `20261014T2017Z`) are from before this fix. They are harmless; deleting them from `raw/` needs Matt's OK.
+- **Key check:** a key whose rows disagree, or a null key, still fails. Exact duplicate rows are only a warning, with the count recorded in the manifest. Damage has 6 such rows in 2025-01 (2 vehicles).
+- **Backfill:** 2024-01 through 2026-09, all 8 tables, as monthly snapshots (period `YYYY-MM`). The legacy half-year snapshots stay as history.
+  - **Staging must pick the newest snapshot per month.** The monthly pulls supersede the half-years and retire the 2025H2 mixed-session problem.
+  - Monthly sums equal MDSP's reconciliation counts exactly: 2024H1 52,410; 2024H2 55,528; 2025H1 49,332; 2025H2 53,568.
+  - 2024–2025 is now **210,838** reports, against **210,860** in the legacy files behind `crash_cost_eval.csv`. **The parity test (item 5) must build from the legacy half-year snapshots**; current numbers use the monthly ones. A `snapshot_selection` setting in the staging card should make this explicit.
+- **Schedule:** the Task Scheduler task "PN MDSP monthly" runs `ops/mdsp_monthly.ps1` at 6:00 AM on the 7th; the first run is 2026-11-07. To re-register it, run `ops/register_mdsp_monthly.ps1`.
+  - It logs to `$PN_DATA_ROOT\tmp\mdsp_monthly.log` and runs only while Matt is logged on.
+  - It changes `raw_manifest.jsonl` in the working tree but **never commits**. Commit the new manifest lines after checking the log.
+- **New tabs:**
+  - Damage and NMSafetyEquip have unique keys.
+  - Contribs and Sequence have upstream duplicate rows, so they have no key check. Staging must decide how to treat them.
+- **Out of scope for now:** feeding the crash-cost app. Later, the job can run `pn build crash.* --downstream` and `pn export app:crash-cost-md` after the fetch.
+
 **More sources added (2026-10-14, second pass):**
 - **`econ.cpi_u`** (source `bls`, connector `bls_api`). It holds CUUR0000SA0, CUSR0000SA0 and Baltimore CUURS35ESA0, 1975–2026-09.
   - June 2019 → June 2025 = 322.561 / 256.143 = **1.2593**.
