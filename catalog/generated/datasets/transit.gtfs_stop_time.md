@@ -8,7 +8,7 @@ Scheduled arrival and departure at each stop. Times are seconds after midnight o
 - **Source:** mta_gtfs
 - **Depends on:** raw:mta_gtfs/local_bus, transit.gtfs_trip
 - **Card:** `catalog/datasets/transit/gtfs_stop_time.yml`
-- **Current build:** 20261014T020040Z · 1,383,459 rows · git d8c1e6e
+- **Current build:** 20261017T193303Z · 1,383,459 rows · git f6eab64
 - **Inputs:** {'datasets': {'transit.gtfs_trip': '20261014T020040Z'}, 'raw': {'mta_gtfs/local_bus': '20261014T0136Z'}}
 
 ## Columns

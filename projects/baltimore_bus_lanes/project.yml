@@ -1,9 +1,43 @@
 project: baltimore_bus_lanes
-title: Baltimore street-design authority and bus-lane priority corridors
+title: Baltimore buses — frequency by street, and where the bus lanes are
 uses:
   - transit.bus_segment_summary
   - transit.bus_segment_service
-  - traffic.road_jurisdiction
+  - transit.bus_segment_hour
+  - transit.bus_lane_segment
+  - transit.bus_lane_inventory
+  - transit.bus_lane_planned
+  - transit.bus_lane_existing
+  - transit.stop_ridership
   - transit.mta_ridership_route_month
+  - transit.mta_route
+  - transit.gtfs_feed
+  - transit.gtfs_trip
+  - transit.gtfs_stop_time
+  - transit.gtfs_stop
+  - transit.gtfs_shape
+  - transit.gtfs_service_date
+  - transit.ccc_gtfs_route
+  - transit.ntd_monthly
+  - traffic.street_segment
+  - traffic.road_jurisdiction
   - geo.county
-notes: Photos and drafts stay in the OneDrive archive folder (2026/balitmore_bus_lanes). Analysis notebooks go here.
+params:
+  service_date_weekday: '2026-10-14'
+  peak: busiest single clock hour (open decision 1)
+  midday: 9 am–3 pm
+  all_day: 6 am–7 pm (13 h)
+  riders_method: riders_v1   # scripts/riders.py; exposure_v1 also computed
+  route_riders_window_months: 12
+pins: {}   # pin build IDs once numbers are final
+outputs:
+  - {path: outputs/m1_peak_hour_mta.png, window: "GTFS weekday 2026-10-14, busiest clock hour"}
+  - {path: outputs/m2_peak_hour_all.png, window: "GTFS weekday 2026-10-14, busiest clock hour"}
+  - {path: outputs/m3a_midday_mta.png, window: "GTFS weekday 2026-10-14, 9–15"}
+  - {path: outputs/m3b_midday_all.png, window: "GTFS weekday 2026-10-14, 9–15"}
+  - {path: outputs/m4a_daytime_mta.png, window: "GTFS weekday 2026-10-14, 6–19"}
+  - {path: outputs/m4b_daytime_all.png, window: "GTFS weekday 2026-10-14, 6–19"}
+  - {path: outputs/m5_riders_v1_with_lanes.png, window: "stops Summer 2024; route riders 2025-10 to 2026-09; GTFS 2026-10-14"}
+  - {path: outputs/m6_bus_lane_sources.png, window: "BCDOT 2021 inventory; OSM 2026-10-17; EWPC Oct 2024"}
+scripts: "uv run --with matplotlib python projects/baltimore_bus_lanes/scripts/maps.py"
+notes: Photos and drafts stay in the OneDrive archive folder (2026/balitmore_bus_lanes).

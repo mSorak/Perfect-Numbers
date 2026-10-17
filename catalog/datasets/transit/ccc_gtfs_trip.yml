@@ -1,0 +1,58 @@
+id: transit.ccc_gtfs_trip
+title: 'Charm City Circulator GTFS: trips'
+description: Scheduled trips with route, service calendar, direction and shape.
+grain: one row per scheduled trip
+primary_key:
+- trip_id
+layer: staging
+access_mode: mirror
+source: bcdot_circulator
+depends_on:
+- raw:bcdot_circulator/gtfs
+- transit.ccc_gtfs_route
+- transit.ccc_gtfs_shape
+license:
+  terms: Public GTFS feed (published for trip-planning apps)
+  redistribution: attribution
+  citation: Baltimore City DOT, Charm City Circulator GTFS (TripShot), feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:trip
+columns:
+- name: trip_id
+  type: varchar
+  description: GTFS trip ID.
+- name: route_id
+  type: varchar
+  description: GTFS route ID.
+- name: service_id
+  type: varchar
+  description: Service calendar ID (see transit.ccc_gtfs_service_date).
+- name: direction_id
+  type: integer
+  description: 0/1 direction.
+- name: shape_id
+  type: varchar
+  description: Shape followed (transit.ccc_gtfs_shape).
+- name: headsign
+  type: varchar
+  description: Destination sign.
+- name: block_id
+  type: varchar
+  description: Vehicle block.
+- name: feed_snapshot_id
+  type: varchar
+  description: Raw snapshot of the GTFS feed this row came from.
+tests:
+- unique: trip_id
+- relationships:
+    column: route_id
+    to: transit.ccc_gtfs_route
+- relationships:
+    column: shape_id
+    to: transit.ccc_gtfs_shape
+parameters:
+  raw: bcdot_circulator/gtfs
+caveats:
+- date: '2026-10-17'
+  text: 'TripShot feed: IDs are UUIDs that may change between feed versions; join only within one snapshot. feed_info
+    has no dates or version.'

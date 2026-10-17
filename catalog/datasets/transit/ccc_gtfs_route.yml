@@ -1,0 +1,49 @@
+id: transit.ccc_gtfs_route
+title: 'Charm City Circulator GTFS: routes'
+description: Routes in the Charm City Circulator GTFS feed.
+grain: one row per route
+primary_key:
+- route_id
+layer: staging
+access_mode: mirror
+source: bcdot_circulator
+depends_on:
+- raw:bcdot_circulator/gtfs
+license:
+  terms: Public GTFS feed (published for trip-planning apps)
+  redistribution: attribution
+  citation: Baltimore City DOT, Charm City Circulator GTFS (TripShot), feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:route
+columns:
+- name: route_id
+  type: varchar
+  description: GTFS route ID (TripShot numeric string, e.g. 4965).
+- name: route_short_name
+  type: varchar
+  description: Route number as published by TripShot (1 Banner, 2 Cherry, 3 Green, 4 Orange, 5 Purple).
+- name: route_long_name
+  type: varchar
+  description: Route description.
+- name: route_type
+  type: integer
+  description: GTFS route type (3 = bus).
+- name: route_color
+  type: varchar
+  description: Hex colour.
+- name: network_id
+  type: varchar
+  description: Network grouping (MTA extension; NULL in the Circulator feed).
+- name: feed_snapshot_id
+  type: varchar
+  description: Raw snapshot of the GTFS feed this row came from.
+tests:
+- unique: route_id
+- name: five_routes
+  sql: SELECT count(*) AS n FROM {this} HAVING count(*) NOT BETWEEN 3 AND 8
+parameters:
+  raw: bcdot_circulator/gtfs
+caveats:
+- date: '2026-10-17'
+  text: 'TripShot feed: IDs are UUIDs that may change between feed versions; join only within one snapshot. feed_info
+    has no dates or version.'

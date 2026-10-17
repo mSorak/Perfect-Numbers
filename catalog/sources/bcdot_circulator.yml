@@ -1,0 +1,17 @@
+source_id: bcdot_circulator
+publisher: Baltimore City Department of Transportation (Charm City Circulator), feed hosted by TripShot
+landing_page: https://www.baltimorecity.gov/transportation/charm-city-circulator
+terms: "Public GTFS feed published for trip-planning apps; cite Baltimore City DOT (Charm City Circulator) and the snapshot date."
+cadence: {upstream: "with service changes (route redesign 2025-12-07; TripShot migration 2026-07)", ours: "check monthly while the piece is active; snapshot on change"}
+hazards:
+  - The city's own GTFS links (transportation.baltimorecity.gov/files/cccgtfs824zip, ccc-gtfs-january-2024zip) are dead (404 in 2026-10) and Mobility Database marks those feeds deprecated. The TripShot URL is not linked from the city site; it was found from TripShot's URL pattern for other agencies.
+  - feed_info.txt has no feed dates or version; identify the feed by snapshot id and calendar range.
+  - calendar_dates.txt is empty, so event suspensions (e.g. Baltimore Running Festival 2026-10-17) are not in the schedule.
+  - No route- or stop-level ridership is published. System ridership is in NTD (transit.ntd_monthly, ntd_id 30201).
+access_mode: "mirror: small zip (~1 MB), served as a file; snapshot on change."
+entities:
+  gtfs:
+    connector: http_file
+    url: https://charmcity.tripshot.com/v1/gtfs.zip
+    filename: ccc_gtfs.zip
+    extract: true

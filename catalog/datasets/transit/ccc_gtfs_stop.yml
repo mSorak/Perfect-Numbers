@@ -1,0 +1,58 @@
+id: transit.ccc_gtfs_stop
+title: 'Charm City Circulator GTFS: stops'
+description: Bus stops with coordinates. Circulator stop IDs are TripShot UUIDs; no stop ridership is published.
+grain: one row per stop
+primary_key:
+- stop_id
+layer: staging
+access_mode: mirror
+source: bcdot_circulator
+depends_on:
+- raw:bcdot_circulator/gtfs
+license:
+  terms: Public GTFS feed (published for trip-planning apps)
+  redistribution: attribution
+  citation: Baltimore City DOT, Charm City Circulator GTFS (TripShot), feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:stop
+columns:
+- name: stop_id
+  type: varchar
+  description: GTFS stop ID.
+- name: stop_code
+  type: varchar
+  description: Public stop code.
+- name: stop_name
+  type: varchar
+  description: Stop name.
+- name: stop_lat
+  type: double
+  description: Latitude.
+- name: stop_lon
+  type: double
+  description: Longitude.
+- name: direction
+  type: varchar
+  description: Travel direction at stop (MTA extension; NULL in the Circulator feed).
+- name: position
+  type: varchar
+  description: Stop position (NS near side, FS far side, MB mid-block; MTA extension; NULL in the Circulator feed).
+- name: geometry
+  type: geometry
+  description: Point, OGC:CRS84.
+- name: feed_snapshot_id
+  type: varchar
+  description: Raw snapshot of the GTFS feed this row came from.
+tests:
+- unique: stop_id
+- not_null:
+  - geometry
+- name: stops_in_baltimore_bbox
+  sql: SELECT stop_id FROM {this} WHERE stop_lat NOT BETWEEN 39.19 AND 39.38 OR stop_lon NOT BETWEEN -76.72 AND
+    -76.52
+parameters:
+  raw: bcdot_circulator/gtfs
+caveats:
+- date: '2026-10-17'
+  text: 'TripShot feed: IDs are UUIDs that may change between feed versions; join only within one snapshot. feed_info
+    has no dates or version.'

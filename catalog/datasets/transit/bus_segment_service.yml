@@ -1,16 +1,19 @@
 id: transit.bus_segment_service
-title: Scheduled MTA bus service on Baltimore City street segments, by time band
-description: 'Scheduled bus passes on each Baltimore City street segment, for a representative weekday, Saturday
-  and Sunday, split into time bands and by direction. Derived from MTA local-bus GTFS: each route shape is matched
-  to the segments it runs along (at least 60% of the segment within 10 m of the shape, and bearing within 30°, so
-  cross streets at intersections are excluded). Each trip''s time at a segment is interpolated between its first
-  departure and last arrival. "with"/"against" is relative to the segment''s digitized direction, a proxy for the
-  two travel directions.
+title: Scheduled bus service on Baltimore City street segments, by operator and time band
+description: 'Scheduled bus passes on each Baltimore City street segment, by operator (MTA local bus; Charm City Circulator),
+  for a representative weekday, Saturday and Sunday, split into time bands and by direction. Derived from the MTA local-bus
+  and Circulator GTFS feeds: each route shape is matched to the segments it runs along (at least 60% of the segment within
+  10 m of the shape, and bearing within 30°, so cross streets at intersections are excluded). Each trip''s time at a
+  segment is interpolated between its first departure and last arrival. "with"/"against" is relative to the segment''s
+  digitized direction, a proxy for the two travel directions.
+
+  Rows are per operator; to combine operators, sum n_passes_with and n_passes_against before taking the busier direction.
 
   '
-grain: one row per segment × day type × time band (bands with no service are absent)
+grain: one row per segment × operator × day type × time band (bands with no service are absent)
 primary_key:
 - segment_id
+- operator
 - day_type
 - time_band
 layer: mart
@@ -24,6 +27,11 @@ depends_on:
 - transit.gtfs_stop_time
 - transit.gtfs_route
 - transit.gtfs_service_date
+- transit.ccc_gtfs_shape
+- transit.ccc_gtfs_trip
+- transit.ccc_gtfs_stop_time
+- transit.ccc_gtfs_route
+- transit.ccc_gtfs_service_date
 parameters:
   service_dates:
     weekday: '2026-10-14'
@@ -35,19 +43,29 @@ parameters:
   time_bands: early 4–6, am_peak 6–9, midday 9–15, pm_peak 15–19, evening 19–24, night 24–28 (hours after service-day
     midnight)
 caveats:
-- text: Pass times are interpolated linearly along each trip; on long routes the band assignment for a segment can
-    be off by up to a band boundary.
-- text: 'Local-bus feed only: commuter bus, Light Rail and Metro are not included.'
+- text: Pass times are interpolated linearly along each trip; on long routes the band assignment for a segment can be
+    off by up to a band boundary.
 - date: '2026-10-14'
-  text: 'Matcher QA (360 weekday shapes with >500 m in the city): matched segment length ÷ in-city shape length
-    has median 1.04 and 5th–95th percentile 0.96–1.25 at a 10 m buffer. The excess is mostly divided roads, where
-    both carriageways are credited with buses from both directions; per-segment intensity is unaffected but corridor
-    kilometres are slightly overstated. 14 shapes match under 90% of their in-city length (off-street terminals
-    and loops).'
+  text: 'Matcher QA (360 weekday shapes with >500 m in the city): matched segment length ÷ in-city shape length has median
+    1.04 and 5th–95th percentile 0.96–1.25 at a 10 m buffer. The excess is mostly divided roads, where both carriageways
+    are credited with buses from both directions; per-segment intensity is unaffected but corridor kilometres are slightly
+    overstated. 14 shapes match under 90% of their in-city length (off-street terminals and loops).'
+- text: 'MTA local bus and the Charm City Circulator only: MTA commuter bus, Light Rail, Metro, the Harbor Connector
+    and university shuttles are not included.'
+- date: '2026-10-17'
+  text: Saturday 2026-10-17 was the Baltimore Running Festival; the Circulator suspended Orange, Purple and Banner 9
+    am–4 pm and MTA detoured routes. Neither GTFS shows it, so Saturday rows describe the regular schedule, not that
+    day.
+- date: '2026-10-17'
+  text: The Circulator feed schedules 16 extra Orange Route trips 8–11 pm every day (no direction_id), although BCDOT
+    publishes Mon–Thu service ending at 8 pm. They affect only the evening band.
 columns:
 - name: segment_id
   type: bigint
   description: traffic.street_segment.segment_id.
+- name: operator
+  type: varchar
+  description: MTA (local bus feed) or Circulator (Charm City Circulator feed).
 - name: day_type
   type: varchar
   description: weekday, saturday or sunday (representative dates in parameters).
@@ -74,13 +92,14 @@ columns:
   description: Buses per hour, both directions combined.
 - name: n_routes
   type: bigint
-  description: Distinct GTFS routes passing in the band.
+  description: Distinct routes (by short name) passing in the band.
 - name: routes
   type: varchar[]
   description: Route short names passing in the band.
 tests:
 - unique:
   - segment_id
+  - operator
   - day_type
   - time_band
 - accepted_values:
@@ -93,7 +112,14 @@ tests:
     column: segment_id
     to: traffic.street_segment
 - name: buses_per_hour_plausible
-  sql: SELECT segment_id, time_band, buses_per_hour_max_direction FROM {this} WHERE buses_per_hour_max_direction
-    > 120
+  sql: SELECT segment_id, time_band, buses_per_hour_max_direction FROM {this} WHERE buses_per_hour_max_direction > 120
 - row_count:
     min: 1000
+- accepted_values:
+    column: operator
+    values:
+    - MTA
+    - Circulator
+- name: circulator_midday_plausible
+  sql: SELECT 1 WHERE (SELECT max(buses_per_hour_max_direction) FROM {this} WHERE operator = 'Circulator' AND day_type
+    = 'weekday' AND time_band = 'midday') NOT BETWEEN 4 AND 20

@@ -1,12 +1,14 @@
 id: transit.bus_segment_summary
 title: Baltimore City bus corridors by street segment (weekday summary, for mapping)
-description: 'One row per Baltimore City street segment with scheduled MTA local-bus service. Combines weekday service
-  intensity (peak buses per hour in the busier direction, daily passes, routes), who controls the street, existing
-  bus lanes (OpenStreetMap) and bike facilities (BCDOT), stop activity, and a route-ridership exposure figure. Built
-  to rank candidate bus-lane corridors.
+description: 'One row per Baltimore City street segment with scheduled weekday MTA local-bus or Charm City Circulator
+  service. Combines weekday service intensity (buses per hour in the busier direction by band, peak hour and
+  daytime; daily passes; routes), who controls the street, bus lanes (reconciled in transit.bus_lane_segment) and
+  bike facilities (BCDOT), stop activity, and a route-ridership exposure figure. Built to rank candidate bus-lane
+  corridors. Unsuffixed frequency columns are MTA only; circulator_* columns are the Circulator only; *_all columns
+  combine both, summing each direction before taking the busier one.
 
   '
-grain: one row per street segment with weekday bus service
+grain: one row per street segment with weekday bus service (MTA or Circulator)
 primary_key:
 - segment_id
 layer: mart
@@ -15,10 +17,11 @@ build:
   python: pipelines/transit/bus_segment_summary.py:build
 depends_on:
 - transit.bus_segment_service
+- transit.bus_segment_hour
 - traffic.street_segment
 - traffic.road_jurisdiction
 - traffic.bike_facility
-- transit.bus_lane_existing
+- transit.bus_lane_segment
 - transit.stop_ridership
 - transit.mta_ridership_route_month
 - transit.mta_route
@@ -44,6 +47,15 @@ caveats:
   text: has_bus_lane combines BCDOT's 'Shared Bus-Bike Lane' facilities (18.3 km) with OSM bus-lane tags; the two
     sources only partly overlap (e.g. Lombard St is in BCDOT but not tagged in OSM). Neither is an official complete
     bus-lane inventory.
+- date: '2026-10-17'
+  text: has_bus_lane now comes from transit.bus_lane_segment (existing = BCDOT 2021 inventory, BCDOT bike layer or
+    OSM), and bus_lane_source lists those sources. Grain widened to include Circulator-only segments (their MTA
+    columns are 0).
+- date: '2026-10-17'
+  text: peak_hour_* is the busiest single clock hour of the weekday (any hour), so on some streets it falls outside
+    the 6–9 am / 3–7 pm bands. daytime_* averages 6 am–7 pm (13 h).
+- text: Circulator frequencies are scheduled from the TripShot GTFS; there is no Circulator ridership by route or
+    stop, so stop and exposure columns are MTA only.
 columns:
 - name: segment_id
   type: bigint
@@ -70,22 +82,28 @@ columns:
     in the city).
 - name: weekday_bus_passes
   type: hugeint
-  description: Scheduled weekday bus passes, all bands and directions.
+  description: Scheduled weekday MTA bus passes, all bands and directions.
 - name: am_peak_buses_per_hour
   type: double
-  description: Weekday 6–9am buses per hour, busier direction.
+  description: Weekday 6–9am MTA buses per hour, busier direction.
 - name: pm_peak_buses_per_hour
   type: double
-  description: Weekday 3–7pm buses per hour, busier direction.
+  description: Weekday 3–7pm MTA buses per hour, busier direction.
 - name: midday_buses_per_hour
   type: double
-  description: Weekday 9am–3pm buses per hour, busier direction.
+  description: Weekday 9am–3pm MTA buses per hour, busier direction.
+- name: peak_hour_buses_per_hour
+  type: hugeint
+  description: MTA buses in the busiest single weekday clock hour, busier direction (transit.bus_segment_hour).
+- name: daytime_buses_per_hour
+  type: double
+  description: Weekday 6am–7pm (13 h) average MTA buses per hour, busier direction over the whole span.
 - name: n_weekday_routes
   type: bigint
-  description: Distinct weekday routes using the segment.
+  description: Distinct weekday MTA routes using the segment.
 - name: weekday_routes
   type: varchar
-  description: Weekday route short names, comma-separated.
+  description: Weekday MTA route short names, comma-separated.
 - name: n_stops
   type: bigint
   description: Bus stops snapped to this segment (within 30 m).
@@ -98,12 +116,45 @@ columns:
 - name: route_weekday_riders_exposure
   type: double
   description: Sum of average weekday riders of routes using the segment (see caveats).
+- name: circulator_weekday_passes
+  type: hugeint
+  description: Scheduled weekday Charm City Circulator passes, all bands and directions.
+- name: circulator_midday_buses_per_hour
+  type: double
+  description: Weekday 9am–3pm Circulator buses per hour, busier direction.
+- name: circulator_routes
+  type: varchar
+  description: Circulator route numbers using the segment (1 Banner, 2 Cherry, 3 Green, 4 Orange, 5 Purple).
+- name: weekday_bus_passes_all
+  type: hugeint
+  description: Weekday passes, MTA + Circulator.
+- name: am_peak_buses_per_hour_all
+  type: double
+  description: Weekday 6–9am buses per hour, MTA + Circulator, busier direction.
+- name: pm_peak_buses_per_hour_all
+  type: double
+  description: Weekday 3–7pm buses per hour, MTA + Circulator, busier direction.
+- name: midday_buses_per_hour_all
+  type: double
+  description: Weekday 9am–3pm buses per hour, MTA + Circulator, busier direction.
+- name: daytime_buses_per_hour_all
+  type: double
+  description: Weekday 6am–7pm average buses per hour, MTA + Circulator, busier direction.
+- name: peak_hour_buses_per_hour_all
+  type: hugeint
+  description: Buses in the busiest single weekday clock hour, MTA + Circulator, busier direction.
+- name: peak_hour_all
+  type: integer
+  description: Clock hour (0–27 after service-day midnight) of peak_hour_buses_per_hour_all; ties go to any one.
 - name: has_bus_lane
   type: boolean
-  description: A bus lane runs along the segment per BCDOT (Shared Bus-Bike Lane) or OpenStreetMap.
+  description: An existing bus lane runs along the segment (transit.bus_lane_segment.bus_lane_status = 'existing').
 - name: bus_lane_source
   type: varchar
-  description: 'Which source flags the bus lane: BCDOT, OSM or BCDOT+OSM.'
+  description: Which existing-lane sources flag it (BCDOT inventory, BCDOT bike layer, OSM, joined with '+').
+- name: bus_lane_status
+  type: varchar
+  description: existing, proposed (East-West corridor) or recommended (BCDOT 2021 inventory); NULL if none.
 - name: has_bus_lane_osm
   type: boolean
   description: An OSM-tagged bus lane runs along the segment.
@@ -126,3 +177,10 @@ tests:
   - geometry
 - row_count:
     min: 1000
+- name: combined_at_least_mta
+  sql: SELECT segment_id FROM {this} WHERE midday_buses_per_hour_all + 1e-9 < midday_buses_per_hour OR peak_hour_buses_per_hour_all
+    < peak_hour_buses_per_hour
+- name: peak_hour_at_least_band_average
+  sql: SELECT segment_id FROM {this} WHERE peak_hour_buses_per_hour + 1e-9 < am_peak_buses_per_hour
+- name: circulator_present_downtown
+  sql: SELECT 1 WHERE (SELECT count(*) FROM {this} WHERE circulator_weekday_passes > 0) < 200

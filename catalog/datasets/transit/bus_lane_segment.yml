@@ -1,0 +1,54 @@
+id: transit.bus_lane_segment
+title: Bus lanes on Baltimore City street segments, reconciled across sources
+description: >
+  One row per Baltimore City street segment that any bus-lane source flags: OpenStreetMap tags
+  (transit.bus_lane_existing), BCDOT's dedicated-bus-lane inventory (transit.bus_lane_inventory, 2021 copy),
+  BCDOT's bike layer ('Shared Bus-Bike Lane', traffic.bike_facility) and the proposed East-West Priority Corridor
+  lanes (transit.bus_lane_planned). Each source is matched to the segments it runs along with
+  pndata.geo.match_lines_to_segments. bus_lane_status is 'existing' if any existing-lane source flags the segment,
+  else 'proposed' (East-West corridor) or 'recommended' (BCDOT inventory only). The per-source flags are kept so a
+  map or total can choose its own rule.
+grain: one row per street segment flagged by at least one source
+primary_key: [segment_id]
+layer: mart
+access_mode: derived
+source: derived
+build: {python: "pipelines/transit/bus_lane_segment.py:build"}
+depends_on: [traffic.street_segment, transit.bus_lane_existing, transit.bus_lane_inventory, traffic.bike_facility, transit.bus_lane_planned]
+parameters:
+  buffer_m: 15
+  min_share: 0.5
+  max_angle: 30
+caveats:
+  - date: "2026-10-17"
+    text: "No source is complete or current: the BCDOT inventory dates from 2021, the bike layer only carries shared bus-bike lanes, and OSM depends on volunteers. 'existing' is the union of the three; n_existing_sources shows agreement."
+  - date: "2026-10-17"
+    text: "Matching is to street centerlines, so a lane on one side flags the whole segment. Lane-km by side needs the source layers (side columns)."
+columns:
+  - {name: segment_id, type: bigint, description: "traffic.street_segment.segment_id."}
+  - {name: street_name, type: varchar, description: "Street name (city centerline)."}
+  - {name: length_m, type: double, description: "Segment length in metres."}
+  - {name: bus_lane_status, type: varchar, description: "existing, proposed or recommended (rule in description)."}
+  - {name: n_existing_sources, type: integer, description: "How many of the three existing-lane sources (BCDOT inventory current, BCDOT bike layer, OSM) flag the segment."}
+  - {name: existing_sources, type: varchar, description: "Which existing-lane sources flag it, joined with '+'."}
+  - {name: on_osm, type: boolean, description: "An OSM bus-lane way runs along the segment."}
+  - {name: osm_side, type: varchar, description: "OSM bus-lane side(s) (right/left/both/lane tags/busway)."}
+  - {name: on_bcdot_inventory, type: boolean, description: "A current/under-construction piece of the BCDOT inventory runs along the segment."}
+  - {name: bcdot_inventory_recommended_only, type: boolean, description: "Only 'Recommended' inventory pieces run along the segment."}
+  - {name: bcdot_inventory_project, type: varchar, description: "Inventory project(s) (North Avenue Streetscape, CHARM CITY CIRCULATOR)."}
+  - {name: bcdot_inventory_hours, type: varchar, description: "Inventory hours (e.g. 24/7) where published."}
+  - {name: bcdot_inventory_side, type: varchar, description: "Inventory side(s): One side / Both sides."}
+  - {name: on_bcdot_bike_layer, type: boolean, description: "A BCDOT bike-layer 'Shared Bus-Bike Lane' runs along the segment."}
+  - {name: is_proposed_ewpc, type: boolean, description: "A proposed East-West Priority Corridor lane runs along the segment."}
+  - {name: proposed_hours, type: varchar, description: "Proposed lane hours (24/7, peak period)."}
+  - {name: proposed_corridor, type: varchar, description: "East-West corridor section (Western, Central)."}
+  - {name: geometry, type: geometry, description: "Segment centerline, LineString, OGC:CRS84."}
+tests:
+  - {unique: segment_id}
+  - {not_null: bus_lane_status}
+  - {accepted_values: {column: bus_lane_status, values: [existing, proposed, recommended]}}
+  - {relationships: {column: segment_id, to: traffic.street_segment}}
+  - name: existing_km_band
+    sql: "SELECT sum(length_m) / 1000 AS km FROM {this} WHERE bus_lane_status = 'existing' HAVING km NOT BETWEEN 8 AND 40"
+  - name: north_ave_has_lanes
+    sql: "SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM {this} WHERE street_name ILIKE '%NORTH AVE%' AND bus_lane_status = 'existing')"

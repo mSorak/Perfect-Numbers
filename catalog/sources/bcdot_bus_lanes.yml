@@ -1,0 +1,24 @@
+source_id: bcdot_bus_lanes
+publisher: Baltimore City DOT / MDOT MTA dedicated-bus-lane layers, as hosted by their consultants (Mead & Hunt), plus MTA's published map
+landing_page: https://mta.maryland.gov/infrastructure-improvements
+terms: "Public ArcGIS Online items and a public PDF; cite BCDOT / MDOT MTA (via Mead & Hunt ArcGIS Online) and the retrieval date."
+cadence: {upstream: "irregular; no official maintained public layer", ours: "per project"}
+hazards:
+  - No official open bus-lane layer exists from BCDOT or MTA (2026-10-17 search of the BCDOT ArcGIS org, Open Baltimore, Maryland iMAP and MTA's site). These are consultant-hosted copies.
+  - bus_lane_2021 uses BCDOT's facility schema and is tagged BCDOT, but was last edited 2021-11; lanes built later are missing.
+  - ewpc_proposed_2024 is a design proposal (East-West Priority Corridor), not built infrastructure. Its item was edited as late as 2026-05.
+  - Owners can delete or rename these items without notice; the raw snapshots are the record.
+access_mode: "mirror: small ArcGIS layers and one PDF; no API alternative."
+entities:
+  bus_lane_2021:
+    connector: arcgis
+    url: https://services2.arcgis.com/2gKap7KMz7fy1U4a/arcgis/rest/services/Baltimore_City_RHRs__Separated_Bike_Lanes__and_Bus_Lanes_WFL1/FeatureServer/1
+    item: https://www.arcgis.com/home/item.html?id=91dc583522d04fc5a90079f6e0d0ac46
+  ewpc_proposed_2024:
+    connector: arcgis
+    url: https://services2.arcgis.com/2gKap7KMz7fy1U4a/arcgis/rest/services/Dedicated_Bus_Lane_update_oct_10_2024/FeatureServer/0
+    item: https://www.arcgis.com/home/item.html?id=5de5bd9cd46648aa86da0644f8e8b7c7
+  mta_dbl_map_2017:
+    connector: http_file
+    url: https://s3.amazonaws.com/mta-website-staging/mta-website-staging/files/System%20Information/Dedicated%20Bus%20Lanes.pdf
+    filename: mta_dedicated_bus_lanes_2017.pdf
