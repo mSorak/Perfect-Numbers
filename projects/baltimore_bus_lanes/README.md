@@ -81,4 +81,20 @@ Nobody publishes passenger load by street. Candidate methods, from simplest to b
 4. Should MTA commuter buses be added to the hub (they use downtown streets in the peak)?
 
 ## Status
-- 2026-10-17: Plan written. Circulator GTFS and bus-lane sources added to the hub; segment marts extended; first draft maps in `outputs/` (see the end of this file once built).
+- 2026-10-17: Plan written. Circulator GTFS and bus-lane sources added to the hub; segment marts extended; first draft maps in `outputs/`.
+
+### Built (hub)
+- Sources `bcdot_circulator`, `bcdot_bus_lanes` (snapshots 20261017T1923Z); OSM bus lanes re-pulled 20261017T1924Z.
+- Staging: `transit.ccc_gtfs_{route,trip,stop,stop_time,shape,service_date}` (reuse `pipelines/transit/gtfs_build.py`), `transit.bus_lane_inventory`, `transit.bus_lane_planned`.
+- Marts: `transit.bus_segment_service` now has an `operator` column (MTA / Circulator; MTA rows identical to the Phase 1 build); new `transit.bus_segment_hour`; new `transit.bus_lane_segment`; `transit.bus_segment_summary` gains Circulator, combined (`*_all`), peak-hour and daytime columns and takes lanes from `bus_lane_segment`.
+- Checks: all pass. Circulator headways match BCDOT's published ones (Orange ~6/h, Purple ~4.6/h, Green and Cherry 3/h, Banner 1.5/h).
+
+### Built (project)
+- `scripts/riders.py`: `riders_v1` and `exposure_v1` (estimates; computed on the fly, not stored in the hub).
+- `scripts/maps.py` → `outputs/m1…m6*.png`. Run: `uv run --with matplotlib python projects/baltimore_bus_lanes/scripts/maps.py`. The PNGs are git-ignored (`*.png`), so regenerate them from the script.
+
+### First findings (drafts; verify before publishing)
+- Of the **23 km** of city street with 20+ buses in the peak hour (MTA + Circulator, busier direction, Wed 2026-10-14, segments ≥ 50 m), **37%** has a bus lane; for 12–19 buses/h (80 km) it is **9%**; for 8–11 (118 km), 4%. (`queries/examples/bus_lanes_vs_frequency.sql`)
+- Existing lanes on the centerline: **23.8 km** of segments. The BCDOT 2021 inventory and the BCDOT bike layer agree almost everywhere; OSM confirms about a third and adds lanes the 2021 inventory lacks (Harford Rd ≈0.7 km, Guilford Ave ≈0.4 km).
+- `riders_v1` diagnostics: stop-based boardings vs CX route riders, median ratio 0.93 (p10–p90 0.68–1.16), so the two sources are broadly consistent. The implied average in-city ride is 1.6 mi, which may understate loads (flooring at zero, plus riders who board outside the city). Highest estimated loads: E Fayette St, E Baltimore St, Eastern Ave, Edison Hwy, Harford Rd, the North Ave lanes.
+- The Circulator adds frequency mostly on streets that already have it (Pratt, Lombard, Charles/St. Paul, Light) and on Cherry Hill / Fort Ave.
