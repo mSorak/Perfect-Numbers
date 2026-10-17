@@ -12,6 +12,7 @@ Piece-specific code lives in `projects/<slug>/` only when worth keeping.
 **Status: Phase 1 (bus-corridor slice).** Built datasets are listed in `catalog/generated/CATALOG.md`. Each one has a
 page under `catalog/generated/datasets/` with grain, keys, columns, caveats and lineage. Read the page before using a dataset.
 **Current state and next steps: `docs/HANDOFF.md`. Read it before starting work.** The design is in `docs/design/03_proposal.md` (§0.2 decisions, §10 roadmap). Conventions: `catalog/conventions.md`.
+Per-piece projects (`projects/<slug>/`: project.yml, README, outputs; one session and branch per piece): `docs/projects.md`.
 
 ## The five rules
 1. **Query hub data by dataset ID** (e.g. `transit.bus_segment_summary`). Never copy hub files into a project folder; filter in the query. Declare what a project uses in its `project.yml`.
