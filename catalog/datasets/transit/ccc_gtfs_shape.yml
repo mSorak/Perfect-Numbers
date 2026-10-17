@@ -1,0 +1,38 @@
+id: transit.ccc_gtfs_shape
+title: 'Charm City Circulator GTFS: shapes'
+description: Route paths as lines assembled from shapes.txt points in sequence.
+grain: one row per shape
+primary_key:
+- shape_id
+layer: staging
+access_mode: mirror
+source: bcdot_circulator
+depends_on:
+- raw:bcdot_circulator/gtfs
+license:
+  terms: Public GTFS feed (published for trip-planning apps)
+  redistribution: attribution
+  citation: Baltimore City DOT, Charm City Circulator GTFS (TripShot), feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:shape
+columns:
+- name: shape_id
+  type: varchar
+  description: GTFS shape ID.
+- name: geometry
+  type: geometry
+  description: LineString, OGC:CRS84.
+- name: n_points
+  type: bigint
+  description: Number of shape points.
+- name: feed_snapshot_id
+  type: varchar
+  description: Raw snapshot of the GTFS feed this row came from.
+tests:
+- unique: shape_id
+parameters:
+  raw: bcdot_circulator/gtfs
+caveats:
+- date: '2026-10-17'
+  text: 'TripShot feed: IDs are UUIDs that may change between feed versions; join only within one snapshot. feed_info
+    has no dates or version.'

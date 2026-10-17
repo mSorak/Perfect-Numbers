@@ -8,7 +8,7 @@ Routes in the MTA local bus GTFS feed. route_id joins to transit.mta_route.route
 - **Source:** mta_gtfs
 - **Depends on:** raw:mta_gtfs/local_bus
 - **Card:** `catalog/datasets/transit/gtfs_route.yml`
-- **Current build:** 20261014T020040Z · 66 rows · git d8c1e6e
+- **Current build:** 20261017T193303Z · 66 rows · git f6eab64
 - **Inputs:** {'datasets': {}, 'raw': {'mta_gtfs/local_bus': '20261014T0136Z'}}
 
 ## Columns

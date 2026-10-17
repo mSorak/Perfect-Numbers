@@ -1,0 +1,35 @@
+id: transit.bus_lane_planned
+title: Proposed dedicated bus lanes, East-West Priority Corridor (2024 design update)
+description: >
+  Proposed dedicated bus lanes for MTA's East-West Priority Corridor (CityLink Blue/Orange), from the consultant's
+  "Dedicated Bus Lane update oct 10 2024" layer: the Western corridor on Edmondson Ave (Cooks Ln to Warwick Ave)
+  and one Central-corridor piece (President St to Central Ave). Each row is one direction of one extent, typed as
+  24/7 red-painted or peak-period lanes. Proposed, not built.
+grain: one row per proposed lane extent × direction
+primary_key: [lane_id]
+layer: staging
+access_mode: mirror
+source: bcdot_bus_lanes
+build: {python: "pipelines/transit/bus_lane_sources.py:planned"}
+depends_on: ["raw:bcdot_bus_lanes/ewpc_proposed_2024"]
+license: {terms: "Public ArcGIS Online item", redistribution: attribution, citation: "MDOT MTA East-West Priority Corridor, proposed dedicated bus lanes (Oct 2024 update), via Mead & Hunt ArcGIS Online (item 5de5bd9cd46648aa86da0644f8e8b7c7), retrieved {retrieved_at}"}
+caveats:
+  - date: "2026-10-17"
+    text: "A design-stage layer, not a commitment. Check MTA's project page for the current design before citing extents."
+columns:
+  - {name: lane_id, type: bigint, description: "Source FID."}
+  - {name: corridor, type: varchar, description: "Western Corridor or Central Corridor."}
+  - {name: extent, type: varchar, description: "From–to description, e.g. 'Uplands Pkwy to Wildwood Pkwy'."}
+  - {name: lane_type, type: varchar, description: "Lane type as published (24/7 Red Painted DBL, Peak Hour DBL, …)."}
+  - {name: lane_type_group, type: varchar, description: "Grouped lane type as published (Type2)."}
+  - {name: travel_direction, type: varchar, description: "north or south as published (the corridor's nominal direction)."}
+  - {name: hours, type: varchar, description: "24/7 or peak period, derived from lane_type_group."}
+  - {name: status, type: varchar, description: "Always 'proposed'."}
+  - {name: length_m, type: double, description: "Line length in metres (EPSG:26985)."}
+  - {name: source_snapshot_id, type: varchar, description: "Raw snapshot id."}
+  - {name: geometry, type: geometry, description: "LineString, OGC:CRS84."}
+tests:
+  - {unique: lane_id}
+  - {accepted_values: {column: hours, values: ["24/7", "peak period"]}}
+  - name: length_band
+    sql: "SELECT sum(length_m) / 1000 AS km FROM {this} HAVING km NOT BETWEEN 2 AND 20"

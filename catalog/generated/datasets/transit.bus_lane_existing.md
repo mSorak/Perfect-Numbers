@@ -8,8 +8,8 @@ Street ways in Baltimore tagged with a bus lane or busway in OpenStreetMap, from
 - **Source:** osm_overpass
 - **Depends on:** raw:osm_overpass/baltimore_bus_lanes
 - **Card:** `catalog/datasets/transit/bus_lane_existing.yml`
-- **Current build:** 20261014T020043Z · 154 rows · git d8c1e6e
-- **Inputs:** {'datasets': {}, 'raw': {'osm_overpass/baltimore_bus_lanes': '20261014T0148Z'}}
+- **Current build:** 20261017T192710Z · 154 rows · git f6eab64
+- **Inputs:** {'datasets': {}, 'raw': {'osm_overpass/baltimore_bus_lanes': '20261017T1924Z'}}
 
 ## Columns
 

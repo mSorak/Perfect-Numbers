@@ -1,16 +1,36 @@
-"""Staging for MTA local-bus GTFS tables. One function per dataset; all read the latest feed snapshot."""
+"""Staging for GTFS tables. One function per dataset; all read the latest feed snapshot.
+
+The feed is the card parameter `raw` ("source/entity"); the default is the MTA local-bus feed. The Charm City
+Circulator cards (transit.ccc_gtfs_*) reuse these functions with `raw: bcdot_circulator/gtfs`.
+"""
+
+import duckdb
 
 RAW = "mta_gtfs/local_bus"
 
 
+def _raw_key(ctx) -> str:
+    return ctx.card.get("parameters", {}).get("raw", RAW)
+
+
+def _path(ctx, name: str) -> str:
+    return (ctx.raw(_raw_key(ctx)) / "extracted" / name).as_posix()
+
+
 def _csv(ctx, name: str) -> str:
-    return f"read_csv('{(ctx.raw(RAW) / 'extracted' / name).as_posix()}', all_varchar=true, header=true)"
+    return f"read_csv('{_path(ctx, name)}', all_varchar=true, header=true)"
+
+
+def _opt(ctx, name: str, col: str) -> str:
+    """NULLIF(col, '') if the optional column exists in the file, else a typed NULL."""
+    cols = duckdb.sql(f"SELECT * FROM read_csv('{_path(ctx, name)}', all_varchar=true, header=true) LIMIT 0").columns
+    return f"NULLIF({col}, '')" if col in cols else "NULL::VARCHAR"
 
 
 def _feed(ctx) -> str:
-    ctx.raw(RAW)
-    rec = ctx.raw_inputs[RAW]
-    return f"'{rec['snapshot_id']}' AS feed_snapshot_id"
+    key = _raw_key(ctx)
+    ctx.raw(key)
+    return f"'{ctx.raw_inputs[key]['snapshot_id']}' AS feed_snapshot_id"
 
 
 def _secs(col: str) -> str:
@@ -27,7 +47,7 @@ def feed(con, ctx):
 
 def route(con, ctx):
     return f"""SELECT route_id, route_short_name, route_long_name, route_type::INT AS route_type,
-                      NULLIF(route_color, '') AS route_color, NULLIF(network_id, '') AS network_id, {_feed(ctx)}
+                      NULLIF(route_color, '') AS route_color, {_opt(ctx, 'routes.txt', 'network_id')} AS network_id, {_feed(ctx)}
                FROM {_csv(ctx, 'routes.txt')}"""
 
 
@@ -40,7 +60,7 @@ def trip(con, ctx):
 def stop(con, ctx):
     return f"""SELECT stop_id, NULLIF(stop_code, '') AS stop_code, stop_name,
                       stop_lat::DOUBLE AS stop_lat, stop_lon::DOUBLE AS stop_lon,
-                      NULLIF(direction, '') AS direction, NULLIF(position, '') AS position,
+                      {_opt(ctx, 'stops.txt', 'direction')} AS direction, {_opt(ctx, 'stops.txt', 'position')} AS position,
                       ST_Point(stop_lon::DOUBLE, stop_lat::DOUBLE)::GEOMETRY('OGC:CRS84') AS geometry, {_feed(ctx)}
                FROM {_csv(ctx, 'stops.txt')}"""
 
@@ -49,8 +69,8 @@ def stop_time(con, ctx):
     return f"""SELECT trip_id, stop_id, stop_sequence::INT AS stop_sequence,
                       {_secs('arrival_time')} AS arrival_s, {_secs('departure_time')} AS departure_s,
                       TRY_CAST(NULLIF(shape_dist_traveled, '') AS DOUBLE) AS shape_dist_traveled,
-                      pickup_type::INT AS pickup_type, drop_off_type::INT AS drop_off_type,
-                      timepoint::INT AS timepoint
+                      TRY_CAST(pickup_type AS INT) AS pickup_type, TRY_CAST(drop_off_type AS INT) AS drop_off_type,
+                      TRY_CAST(timepoint AS INT) AS timepoint
                FROM {_csv(ctx, 'stop_times.txt')}"""
 
 

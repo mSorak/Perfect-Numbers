@@ -1,0 +1,61 @@
+id: transit.ccc_gtfs_stop_time
+title: 'Charm City Circulator GTFS: stop times'
+description: Scheduled arrival and departure at each stop. Times are seconds after midnight of the service day (can
+  exceed 86,400).
+grain: one row per trip × stop visit
+primary_key:
+- trip_id
+- stop_sequence
+layer: staging
+access_mode: mirror
+source: bcdot_circulator
+depends_on:
+- raw:bcdot_circulator/gtfs
+- transit.ccc_gtfs_trip
+license:
+  terms: Public GTFS feed (published for trip-planning apps)
+  redistribution: attribution
+  citation: Baltimore City DOT, Charm City Circulator GTFS (TripShot), feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:stop_time
+columns:
+- name: trip_id
+  type: varchar
+  description: GTFS trip ID.
+- name: stop_id
+  type: varchar
+  description: GTFS stop ID.
+- name: stop_sequence
+  type: integer
+  description: Order of the stop within the trip.
+- name: arrival_s
+  type: integer
+  description: Scheduled arrival, seconds after service-day midnight.
+- name: departure_s
+  type: integer
+  description: Scheduled departure, seconds after service-day midnight.
+- name: shape_dist_traveled
+  type: double
+  description: Distance along shape (feed units, miles).
+- name: pickup_type
+  type: integer
+  description: 0 regular pickup.
+- name: drop_off_type
+  type: integer
+  description: 0 regular drop-off.
+- name: timepoint
+  type: integer
+  description: 1 = exact timepoint.
+tests:
+- unique:
+  - trip_id
+  - stop_sequence
+- relationships:
+    column: trip_id
+    to: transit.ccc_gtfs_trip
+parameters:
+  raw: bcdot_circulator/gtfs
+caveats:
+- date: '2026-10-17'
+  text: 'TripShot feed: IDs are UUIDs that may change between feed versions; join only within one snapshot. feed_info
+    has no dates or version.'

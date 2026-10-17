@@ -1,0 +1,38 @@
+id: transit.ccc_gtfs_service_date
+title: 'Charm City Circulator GTFS: active service by date'
+description: Which service calendars run on each date, from calendar.txt with calendar_dates.txt exceptions applied
+  (the TripShot feed has no exceptions).
+grain: one row per service date × service_id
+primary_key:
+- date
+- service_id
+layer: staging
+access_mode: mirror
+source: bcdot_circulator
+depends_on:
+- raw:bcdot_circulator/gtfs
+license:
+  terms: Public GTFS feed (published for trip-planning apps)
+  redistribution: attribution
+  citation: Baltimore City DOT, Charm City Circulator GTFS (TripShot), feed snapshot {feed_snapshot_id}
+build:
+  python: pipelines/transit/gtfs_build.py:service_date
+columns:
+- name: service_id
+  type: varchar
+  description: Service calendar ID.
+- name: date
+  type: date
+  description: Service date.
+tests:
+- unique:
+  - date
+  - service_id
+- name: weekday_service_2026_10_14
+  sql: SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM {this} WHERE date = DATE '2026-10-14')
+parameters:
+  raw: bcdot_circulator/gtfs
+caveats:
+- date: '2026-10-17'
+  text: 'TripShot feed: IDs are UUIDs that may change between feed versions; join only within one snapshot. feed_info
+    has no dates or version.'
